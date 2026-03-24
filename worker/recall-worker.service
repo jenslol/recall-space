@@ -1,0 +1,17 @@
+[Unit]
+Description=Recall Space AI Worker
+After=network.target ollama.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/recall-space-worker
+ExecStart=%h/recall-space-worker/recall-worker-start.sh
+Restart=on-failure
+RestartSec=10
+
+# AMD ROCm environment
+Environment=HSA_OVERRIDE_GFX_VERSION=11.0.0
+Environment=HSA_ENABLE_SDMA=0
+
+[Install]
+WantedBy=default.target
