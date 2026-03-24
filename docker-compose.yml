@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    container_name: recall-space
+    ports:
+      - "8400:8000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    env_file: .env
+    environment:
+      - TZ=Europe/Copenhagen
+    restart: unless-stopped
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: recall-ntfy
+    command: serve
+    ports:
+      - "8402:80"
+    volumes:
+      - ./data/ntfy:/etc/ntfy
+    environment:
+      - TZ=Europe/Copenhagen
+    restart: unless-stopped

@@ -1,0 +1,10 @@
+data/
+uploads/
+.env
+.git/
+__pycache__/
+*.pyc
+.venv/
+scripts/
+README.md
+.env.example

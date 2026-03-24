@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>recall space</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="shell">
+
+        <!-- Header -->
+        <header>
+            <h1>recall <span>space</span></h1>
+            <div class="stats" id="stats">
+                <span><span class="num">—</span> memories</span>
+                <span><span class="num">—</span> pending</span>
+                <span class="brain-status" id="brain-status" title="AI worker offline">🧠</span>
+            </div>
+        </header>
+
+        <!-- Capture bar -->
+        <div class="capture-bar">
+            <div class="capture-actions">
+                <button class="btn btn--primary" id="btn-screenshot">+ file</button>
+                <button class="btn" id="btn-text">+ text</button>
+                <button class="btn" id="btn-url">+ url</button>
+                <button class="btn" id="btn-voice">+ voice</button>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="search memories..." autocomplete="off" spellcheck="false">
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-type="all">all</button>
+            <button class="filter-tab" data-type="screenshot">screenshots</button>
+            <button class="filter-tab" data-type="voice">voice</button>
+            <button class="filter-tab" data-type="text">text</button>
+            <button class="filter-tab" data-type="url">urls</button>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline" id="timeline">
+            <div class="loading">loading...</div>
+        </div>
+
+    </div>
+
+    <!-- Capture Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-title">// capture</h2>
+
+            <!-- File upload -->
+            <div class="form-group" id="file-group" style="display:none">
+                <label>file</label>
+                <div class="drop-zone" id="drop-zone">drop file here or click to browse</div>
+                <input type="file" id="file-input" accept="image/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none">
+            </div>
+
+            <!-- URL input -->
+            <div class="form-group" id="url-group" style="display:none">
+                <label>url</label>
+                <input type="url" id="capture-url" placeholder="https://...">
+            </div>
+
+            <!-- Text input -->
+            <div class="form-group" id="text-group" style="display:none">
+                <label>text</label>
+                <textarea id="capture-text" placeholder="paste or type anything..."></textarea>
+            </div>
+
+            <!-- Voice recorder -->
+            <div class="form-group" id="voice-group" style="display:none">
+                <div class="voice-recorder">
+                    <button class="record-btn" id="record-btn"></button>
+                    <div class="record-time" id="record-time">00:00</div>
+                </div>
+            </div>
+
+            <!-- Common fields -->
+            <div class="form-group">
+                <label>title (optional)</label>
+                <input type="text" id="capture-title" placeholder="name this memory">
+            </div>
+
+            <div class="form-group">
+                <label>note — why is this important?</label>
+                <textarea id="capture-note" placeholder="add context for your future self..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" id="btn-cancel">cancel</button>
+                <button class="btn btn--primary" id="btn-save">save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

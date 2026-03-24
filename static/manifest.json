@@ -1,0 +1,39 @@
+{
+    "name": "Recall Space",
+    "short_name": "Recall",
+    "description": "Self-hosted AI memory hub — capture, organize, remember.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#0a0a0a",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/static/icon-192.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/static/icon-512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ],
+    "share_target": {
+        "action": "/api/memories",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "title": "title",
+            "text": "raw_text",
+            "url": "url",
+            "files": [
+                {
+                    "name": "file",
+                    "accept": ["image/*", "audio/*", "application/pdf", "text/*"]
+                }
+            ]
+        }
+    },
+    "categories": ["productivity", "utilities"]
+}

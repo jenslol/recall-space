@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>memory — recall space</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .detail { padding: 2rem 0; }
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .back {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .back:hover { color: var(--accent); }
+        .detail-title {
+            font-family: var(--sans);
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+        .detail-meta {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .detail-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-section:last-child { border-bottom: none; }
+        .section-label {
+            font-size: 0.68rem;
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.5rem;
+        }
+        .section-content {
+            font-family: var(--sans);
+            font-size: 0.88rem;
+            line-height: 1.7;
+            color: var(--text);
+        }
+        .section-content.mono {
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            white-space: pre-wrap;
+            color: var(--text-dim);
+        }
+        .detail-image {
+            max-width: 100%;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+        .detail-audio {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        .actions-list {
+            list-style: none;
+        }
+        .actions-list li {
+            padding: 0.4rem 0;
+            padding-left: 1rem;
+            border-left: 2px solid var(--accent);
+            margin-bottom: 0.3rem;
+            font-family: var(--sans);
+            font-size: 0.85rem;
+        }
+        .tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-dim);
+            margin-right: 0.3rem;
+            margin-bottom: 0.3rem;
+        }
+        .url-link {
+            color: var(--accent);
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+        .url-link:hover { text-decoration: underline; }
+        .danger-zone {
+            padding: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+
+        <header>
+            <h1>recall <span>space</span></h1>
+        </header>
+
+        <div class="detail" id="detail">
+            <div class="loading">loading...</div>
+        </div>
+
+    </div>
+
+    <script>
+        const memoryId = {{ memory_id }};
+        const API = '';
+
+        document.addEventListener('DOMContentLoaded', loadDetail);
+
+        async function loadDetail() {
+            try {
+                const res = await fetch(`${API}/api/memories/${memoryId}`);
+                if (!res.ok) throw new Error('Not found');
+                const m = await res.json();
+                renderDetail(m);
+            } catch (err) {
+                document.getElementById('detail').innerHTML = `
+                    <a href="/" class="back">← back</a>
+                    <div class="empty-state"><p>memory not found</p></div>`;
+            }
+        }
+
+        function renderDetail(m) {
+            const el = document.getElementById('detail');
+            const time = m.created_at ? new Date(m.created_at + 'Z').toLocaleString('da-DK') : '';
+            const title = m.title || m.ai_summary?.substring(0, 80) || m.original_filename || 'untitled';
+
+            let sections = '';
+
+            // Image
+            if (m.type === 'screenshot' && m.file_path) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">screenshot</div>
+                    <img class="detail-image" src="/uploads/${esc(m.file_path)}" alt="">
+                </div>`;
+            }
+
+            // Audio
+            if (m.type === 'voice' && m.file_path) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">audio</div>
+                    <audio class="detail-audio" controls src="/uploads/${esc(m.file_path)}"></audio>
+                </div>`;
+            }
+
+            // URL
+            if (m.url) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">url</div>
+                    <a class="url-link" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.url)}</a>
+                </div>`;
+            }
+
+            // User note
+            if (m.user_note) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">your note</div>
+                    <div class="section-content">${esc(m.user_note)}</div>
+                </div>`;
+            }
+
+            // Raw text
+            if (m.raw_text) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">captured text</div>
+                    <div class="section-content mono">${esc(m.raw_text)}</div>
+                </div>`;
+            }
+
+            // OCR text
+            if (m.ocr_text) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">extracted text (ocr)</div>
+                    <div class="section-content mono">${esc(m.ocr_text)}</div>
+                </div>`;
+            }
+
+            // Transcript
+            if (m.transcript) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">transcript</div>
+                    <div class="section-content">${esc(m.transcript)}</div>
+                </div>`;
+            }
+
+            // AI Summary
+            if (m.ai_summary) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">ai summary</div>
+                    <div class="section-content">${esc(m.ai_summary)}</div>
+                </div>`;
+            }
+
+            // AI Actions
+            if (m.ai_actions) {
+                try {
+                    const actions = JSON.parse(m.ai_actions);
+                    if (actions.length) {
+                        sections += `
+                        <div class="detail-section">
+                            <div class="section-label">action items</div>
+                            <ul class="actions-list">
+                                ${actions.map(a => `<li>${esc(a)}</li>`).join('')}
+                            </ul>
+                        </div>`;
+                    }
+                } catch {}
+            }
+
+            // AI Tags
+            if (m.ai_tags) {
+                try {
+                    const tags = JSON.parse(m.ai_tags);
+                    if (tags.length) {
+                        sections += `
+                        <div class="detail-section">
+                            <div class="section-label">tags</div>
+                            <div>${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+                        </div>`;
+                    }
+                } catch {}
+            }
+
+            // Reminders
+            if (m.reminders?.length) {
+                sections += `
+                <div class="detail-section">
+                    <div class="section-label">reminders</div>
+                    <ul class="actions-list">
+                        ${m.reminders.map(r => `<li>${esc(r.title)} — ${new Date(r.remind_at + 'Z').toLocaleString('da-DK')} ${r.sent ? '✓' : ''}</li>`).join('')}
+                    </ul>
+                </div>`;
+            }
+
+            el.innerHTML = `
+                <div class="detail-header">
+                    <a href="/" class="back">← back</a>
+                    <span class="memory-type" data-type="${m.type}">${m.type}</span>
+                </div>
+                <h2 class="detail-title">${esc(title)}</h2>
+                <div class="detail-meta">
+                    <span>${time}</span>
+                    <span>status: ${m.processing_status}</span>
+                </div>
+                ${sections}
+                <div class="danger-zone">
+                    <button class="btn btn--danger btn--small" onclick="deleteMemory(${m.id})">delete memory</button>
+                </div>`;
+        }
+
+        async function deleteMemory(id) {
+            if (!confirm('Delete this memory permanently?')) return;
+            try {
+                await fetch(`${API}/api/memories/${id}`, { method: 'DELETE' });
+                window.location.href = '/';
+            } catch (err) {
+                console.error('Delete failed:', err);
+            }
+        }
+
+        function esc(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
