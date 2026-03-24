@@ -1,12 +1,14 @@
-// Recall Space — Client
+// Recall Space — Client v0.3
 // ============================================================================
 
 const API = '';
 let memories = [];
+let collections = [];
 let stats = {};
 let activeFilter = 'all';
+let activeCollection = null;
+let currentQuery = '';
 let searchTimeout = null;
-let refreshInterval = null;
 
 // ---------------------------------------------------------------------------
 // Init
@@ -14,27 +16,21 @@ let refreshInterval = null;
 document.addEventListener('DOMContentLoaded', () => {
     loadMemories();
     loadStats();
+    loadCollections();
     checkBrainStatus();
     setupEventListeners();
     setupVoiceRecorder();
-    // Poll brain status every 30s, stats every 15s
     setInterval(checkBrainStatus, 30000);
     setInterval(loadStats, 15000);
-    // Auto-refresh timeline if there are pending jobs
-    refreshInterval = setInterval(() => {
-        if (stats.pending_jobs > 0) loadMemories();
-    }, 5000);
+    setInterval(() => { if (stats.pending_jobs > 0) { loadMemories(); loadStats(); } }, 5000);
 });
 
 // ---------------------------------------------------------------------------
-// API helper (adds auth header if configured)
+// API helper
 // ---------------------------------------------------------------------------
 async function api(path, opts = {}) {
-    // API key can be stored in localStorage for convenience
     const key = localStorage.getItem('recall_api_key');
-    if (key) {
-        opts.headers = { ...opts.headers, 'X-API-Key': key };
-    }
+    if (key) opts.headers = { ...opts.headers, 'X-API-Key': key };
     return fetch(`${API}${path}`, opts);
 }
 
@@ -65,19 +61,21 @@ async function checkBrainStatus() {
 // ---------------------------------------------------------------------------
 // Data fetching
 // ---------------------------------------------------------------------------
-async function loadMemories(query = null, type = null) {
+async function loadMemories() {
     const params = new URLSearchParams();
     params.set('limit', '100');
-    if (query) params.set('q', query);
-    if (type && type !== 'all') params.set('type', type);
+    if (currentQuery) params.set('q', currentQuery);
+    if (activeFilter !== 'all') params.set('type', activeFilter);
+    if (activeCollection) params.set('collection_id', activeCollection);
 
     try {
         const res = await api(`/api/memories?${params}`);
         const data = await res.json();
         memories = data.memories || [];
         renderTimeline();
+        renderSearchCount(data.total);
     } catch (err) {
-        console.error('Failed to load memories:', err);
+        console.error('Failed to load:', err);
     }
 }
 
@@ -86,9 +84,17 @@ async function loadStats() {
         const res = await api('/api/stats');
         stats = await res.json();
         renderStats();
-    } catch (err) {
-        console.error('Failed to load stats:', err);
-    }
+    } catch {}
+}
+
+async function loadCollections() {
+    try {
+        const res = await api('/api/collections');
+        const data = await res.json();
+        collections = data.collections || [];
+        renderCollections();
+        renderCollectionSelect();
+    } catch {}
 }
 
 // ---------------------------------------------------------------------------
@@ -97,17 +103,30 @@ async function loadStats() {
 function renderStats() {
     const el = document.getElementById('stats');
     if (!el) return;
-    const brain = el.querySelector('.brain-status')?.outerHTML || '';
-    const reminders = stats.upcoming_reminders
-        ? `<span><span class="num">${stats.upcoming_reminders}</span> reminders</span>`
-        : '';
+    const brain = document.getElementById('brain-status');
+    const brainHtml = brain ? brain.outerHTML : '';
+    const rem = stats.upcoming_reminders
+        ? `<span><span class="num">${stats.upcoming_reminders}</span> reminders</span>` : '';
     el.innerHTML = `
         <span><span class="num">${stats.total_memories || 0}</span> memories</span>
         <span><span class="num">${stats.pending_jobs || 0}</span> pending</span>
-        ${reminders}
-        ${brain}
+        ${rem}
+        <span class="brain-status" id="brain-status" title="checking...">🧠</span>
     `;
     checkBrainStatus();
+}
+
+function renderSearchCount(total) {
+    const el = document.getElementById('search-count');
+    if (!el) return;
+    const shell = document.querySelector('.shell');
+    if (currentQuery) {
+        el.textContent = `${memories.length} result${memories.length !== 1 ? 's' : ''} for "${currentQuery}"`;
+        shell?.classList.add('search-active');
+    } else {
+        el.textContent = '';
+        shell?.classList.remove('search-active');
+    }
 }
 
 function renderTimeline() {
@@ -115,11 +134,8 @@ function renderTimeline() {
     if (!container) return;
 
     if (memories.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="icon">◇</div>
-                <p>no memories yet. capture something.</p>
-            </div>`;
+        const msg = currentQuery ? `no results for "${esc(currentQuery)}"` : 'no memories yet. capture something.';
+        container.innerHTML = `<div class="empty-state"><div class="icon">◇</div><p>${msg}</p></div>`;
         return;
     }
 
@@ -132,8 +148,7 @@ function renderTimeline() {
 
     let html = '';
     for (const [date, items] of Object.entries(groups)) {
-        html += `<div class="day-group">
-            <div class="day-label">${formatDateLabel(date)}</div>`;
+        html += `<div class="day-group"><div class="day-label">${formatDateLabel(date)}</div>`;
         for (const m of items) html += renderMemoryCard(m);
         html += '</div>';
     }
@@ -144,7 +159,7 @@ function renderMemoryCard(m) {
     const time = m.created_at
         ? new Date(m.created_at + 'Z').toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })
         : '';
-    const title = m.title || m.ai_summary?.substring(0, 60) || m.user_note?.substring(0, 60)
+    let title = m.title || m.ai_summary?.substring(0, 60) || m.user_note?.substring(0, 60)
         || m.url || m.original_filename || 'untitled';
 
     let thumbHtml = `<span class="memory-type" data-type="${m.type}">${m.type}</span>`;
@@ -152,13 +167,40 @@ function renderMemoryCard(m) {
         thumbHtml = `<img class="memory-thumb" src="/uploads/${m.file_path}" alt="" loading="lazy">`;
     }
 
+    // Tags
+    let tagsHtml = '';
+    if (m.ai_tags) {
+        try {
+            const tags = JSON.parse(m.ai_tags);
+            if (tags.length) {
+                tagsHtml = '<div class="tags">'
+                    + tags.slice(0, 4).map(t => `<span class="tag-inline">${esc(t)}</span>`).join('')
+                    + '</div>';
+            }
+        } catch {}
+    }
+
+    // Collection badge
+    let collBadge = '';
+    if (m.collection_id) {
+        const coll = collections.find(c => c.id === m.collection_id);
+        if (coll) collBadge = `<span class="collection-badge">${esc(coll.name)}</span>`;
+    }
+
+    // Highlight search terms in title and summary
+    const displayTitle = currentQuery ? highlightText(title, currentQuery) : esc(title);
+    const displaySummary = m.ai_summary
+        ? (currentQuery ? highlightText(m.ai_summary, currentQuery) : esc(m.ai_summary))
+        : '';
+
     return `
     <a class="memory-card" href="/memory/${m.id}">
         ${thumbHtml}
         <div class="memory-body">
-            <h3>${esc(title)}</h3>
+            <h3>${displayTitle} ${collBadge}</h3>
             ${m.user_note ? `<div class="note">${esc(m.user_note)}</div>` : ''}
-            ${m.ai_summary ? `<div class="summary">${esc(m.ai_summary)}</div>` : ''}
+            ${displaySummary ? `<div class="summary">${displaySummary}</div>` : ''}
+            ${tagsHtml}
         </div>
         <div class="memory-meta">
             <span class="time">${time}</span>
@@ -167,15 +209,77 @@ function renderMemoryCard(m) {
     </a>`;
 }
 
-function formatDateLabel(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (d >= today) return 'today';
-    if (d >= yesterday) return 'yesterday';
-    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+function highlightText(text, query) {
+    const escaped = esc(text);
+    if (!query) return escaped;
+    const words = query.split(/\s+/).filter(w => w.length > 1);
+    let result = escaped;
+    for (const word of words) {
+        const re = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        result = result.replace(re, '<span class="highlight">$1</span>');
+    }
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Collections
+// ---------------------------------------------------------------------------
+function renderCollections() {
+    const el = document.getElementById('collections-list');
+    if (!el) return;
+
+    let html = `<button class="collection-chip ${!activeCollection ? 'active' : ''}"
+        onclick="filterCollection(null)">all</button>`;
+
+    for (const c of collections) {
+        const isActive = activeCollection === c.id;
+        html += `<button class="collection-chip ${isActive ? 'active' : ''}"
+            onclick="filterCollection(${c.id})">
+            <span class="dot" style="background:${esc(c.color)}"></span>
+            ${esc(c.name)}
+            <span class="count">${c.memory_count || 0}</span>
+            <span class="remove" onclick="event.stopPropagation();deleteCollection(${c.id})">×</span>
+        </button>`;
+    }
+    el.innerHTML = html;
+}
+
+function renderCollectionSelect() {
+    const sel = document.getElementById('capture-collection');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">none</option>'
+        + collections.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+
+function filterCollection(id) {
+    activeCollection = id;
+    renderCollections();
+    loadMemories();
+}
+
+async function addCollection() {
+    const input = document.getElementById('new-collection-name');
+    const name = input?.value.trim();
+    if (!name) return;
+    try {
+        await api('/api/collections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        input.value = '';
+        loadCollections();
+    } catch {}
+}
+
+async function deleteCollection(id) {
+    if (!confirm('Delete this collection? Memories will be kept.')) return;
+    try {
+        await api(`/api/collections/${id}`, { method: 'DELETE' });
+        if (activeCollection === id) activeCollection = null;
+        loadCollections();
+        loadMemories();
+    } catch {}
 }
 
 // ---------------------------------------------------------------------------
@@ -193,21 +297,37 @@ function setupEventListeners() {
     document.getElementById('btn-cancel')?.addEventListener('click', closeModal);
     document.getElementById('btn-save')?.addEventListener('click', submitCapture);
 
-    const searchInput = document.getElementById('search-input');
-    searchInput?.addEventListener('input', (e) => {
+    // Search
+    document.getElementById('search-input')?.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            loadMemories(e.target.value || null, activeFilter);
+            currentQuery = e.target.value.trim();
+            loadMemories();
         }, 300);
     });
 
+    // Filters
     document.querySelectorAll('.filter-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             activeFilter = tab.dataset.type;
-            loadMemories(document.getElementById('search-input')?.value || null, activeFilter);
+            loadMemories();
         });
+    });
+
+    // Collections toggle
+    document.getElementById('collections-toggle')?.addEventListener('click', () => {
+        const panel = document.getElementById('collections-panel');
+        const toggle = document.getElementById('collections-toggle');
+        panel?.classList.toggle('open');
+        toggle?.classList.toggle('active');
+    });
+
+    // Add collection
+    document.getElementById('btn-add-collection')?.addEventListener('click', addCollection);
+    document.getElementById('new-collection-name')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addCollection();
     });
 
     // Drop zone
@@ -217,8 +337,7 @@ function setupEventListeners() {
     dropZone?.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone?.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
+        e.preventDefault(); dropZone.classList.remove('dragover');
         if (e.dataTransfer.files.length) {
             fileInput.files = e.dataTransfer.files;
             dropZone.textContent = e.dataTransfer.files[0].name;
@@ -265,6 +384,9 @@ function openModal(type) {
     const target = type === 'screenshot' ? 'file' : type;
     if (groups[target]) document.getElementById(groups[target]).style.display = 'block';
 
+    // Refresh collection dropdown
+    renderCollectionSelect();
+
     overlay.classList.add('active');
     setTimeout(() => {
         overlay.querySelector('.form-group:not([style*="display: none"]) input, .form-group:not([style*="display: none"]) textarea')?.focus();
@@ -277,6 +399,7 @@ function closeModal() {
     document.getElementById('capture-title').value = '';
     document.getElementById('capture-url').value = '';
     document.getElementById('capture-text').value = '';
+    document.getElementById('capture-collection').value = '';
     const dz = document.getElementById('drop-zone');
     if (dz) { dz.textContent = 'drop file here or click to browse'; dz.classList.remove('has-file'); }
     document.getElementById('file-input').value = '';
@@ -290,8 +413,10 @@ async function submitCapture() {
     const fd = new FormData();
     const note = document.getElementById('capture-note')?.value;
     const title = document.getElementById('capture-title')?.value;
+    const collId = document.getElementById('capture-collection')?.value;
     if (note) fd.append('user_note', note);
     if (title) fd.append('title', title);
+    if (collId) fd.append('collection_id', collId);
 
     switch (currentModalType) {
         case 'screenshot': {
@@ -321,14 +446,8 @@ async function submitCapture() {
 
     try {
         const res = await api('/api/memories', { method: 'POST', body: fd });
-        if (res.ok) {
-            closeModal();
-            loadMemories();
-            loadStats();
-        }
-    } catch (err) {
-        console.error('Capture error:', err);
-    }
+        if (res.ok) { closeModal(); loadMemories(); loadStats(); loadCollections(); }
+    } catch (err) { console.error('Capture error:', err); }
 }
 
 async function quickCapture(blob) {
@@ -337,24 +456,17 @@ async function quickCapture(blob) {
     try {
         const res = await api('/api/memories', { method: 'POST', body: fd });
         if (res.ok) {
-            loadMemories();
-            loadStats();
+            loadMemories(); loadStats();
             document.body.style.outline = '2px solid var(--accent)';
             setTimeout(() => document.body.style.outline = '', 300);
         }
-    } catch (err) {
-        console.error('Quick capture error:', err);
-    }
+    } catch {}
 }
 
 // ---------------------------------------------------------------------------
 // Voice recorder
 // ---------------------------------------------------------------------------
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordedBlob = null;
-let recordingStart = null;
-let recordingTimer = null;
+let mediaRecorder = null, recordedChunks = [], recordedBlob = null, recordingStart = null, recordingTimer = null;
 
 function setupVoiceRecorder() {
     document.getElementById('record-btn')?.addEventListener('click', async () => {
@@ -366,8 +478,7 @@ function setupVoiceRecorder() {
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recordedChunks = [];
-        recordedBlob = null;
+        recordedChunks = []; recordedBlob = null;
         mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => {
@@ -383,9 +494,7 @@ async function startRecording() {
             const s = Math.floor((Date.now() - recordingStart) / 1000);
             el.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
         }, 250);
-    } catch (err) {
-        console.error('Microphone access denied:', err);
-    }
+    } catch (err) { console.error('Mic denied:', err); }
 }
 
 function stopRecording() {
@@ -397,6 +506,16 @@ function stopRecording() {
 // ---------------------------------------------------------------------------
 // Utils
 // ---------------------------------------------------------------------------
+function formatDateLabel(d) {
+    const date = new Date(d + 'T00:00:00');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    if (date >= today) return 'today';
+    if (date >= yesterday) return 'yesterday';
+    return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function esc(s) {
     if (!s) return '';
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

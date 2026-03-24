@@ -12,128 +12,72 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         .detail { padding: 2rem 0; }
-        .detail-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .back {
-            font-family: var(--mono);
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            text-decoration: none;
-            transition: color 0.15s;
-        }
+        .detail-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 1.5rem; }
+        .back { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); text-decoration: none; }
         .back:hover { color: var(--accent); }
-        .detail-title {
-            font-family: var(--sans);
-            font-size: 1.3rem;
-            font-weight: 500;
-            margin-bottom: 0.3rem;
-        }
-        .detail-meta {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-        .detail-section {
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
+        .detail-title { font-family: var(--sans); font-size: 1.3rem; font-weight: 500; margin-bottom: 0.3rem; }
+        .detail-meta { font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .detail-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
         .detail-section:last-child { border-bottom: none; }
-        .section-label {
-            font-size: 0.68rem;
-            color: var(--text-faint);
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin-bottom: 0.5rem;
-        }
-        .section-content {
-            font-family: var(--sans);
-            font-size: 0.88rem;
-            line-height: 1.7;
-            color: var(--text);
-        }
-        .section-content.mono {
-            font-family: var(--mono);
-            font-size: 0.82rem;
-            white-space: pre-wrap;
-            color: var(--text-dim);
-        }
-        .detail-image {
-            max-width: 100%;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-        }
-        .detail-audio {
-            width: 100%;
-            margin: 0.5rem 0;
-        }
-        .actions-list {
-            list-style: none;
-        }
-        .actions-list li {
-            padding: 0.4rem 0;
-            padding-left: 1rem;
-            border-left: 2px solid var(--accent);
-            margin-bottom: 0.3rem;
-            font-family: var(--sans);
-            font-size: 0.85rem;
-        }
-        .tag {
-            display: inline-block;
-            font-size: 0.7rem;
-            padding: 0.15rem 0.5rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text-dim);
-            margin-right: 0.3rem;
-            margin-bottom: 0.3rem;
-        }
-        .url-link {
-            color: var(--accent);
-            text-decoration: none;
-            word-break: break-all;
-            font-size: 0.85rem;
-        }
+        .section-label { font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
+        .section-content { font-family: var(--sans); font-size: 0.88rem; line-height: 1.7; }
+        .section-content.mono { font-family: var(--mono); font-size: 0.82rem; white-space: pre-wrap; color: var(--text-dim); }
+        .detail-image { max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); }
+        .detail-audio { width: 100%; margin: 0.5rem 0; }
+        .actions-list { list-style: none; }
+        .actions-list li { padding: 0.4rem 0 0.4rem 1rem; border-left: 2px solid var(--accent); margin-bottom: 0.3rem; font-family: var(--sans); font-size: 0.85rem; }
+        .tag { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-dim); margin: 0 0.3rem 0.3rem 0; }
+        .url-link { color: var(--accent); text-decoration: none; word-break: break-all; font-size: 0.85rem; }
         .url-link:hover { text-decoration: underline; }
-        .danger-zone {
-            padding: 1rem 0;
+        .danger-zone { padding: 1rem 0; }
+        .collection-select { margin-top: 0.3rem; }
+        .collection-select select {
+            font-family: var(--mono); font-size: 0.78rem; padding: 0.3rem 0.5rem;
+            background: var(--bg); border: 1px solid var(--border); color: var(--text);
+            border-radius: var(--radius); cursor: pointer;
         }
+        .collection-select select:focus { border-color: var(--accent); }
     </style>
 </head>
 <body>
     <div class="shell">
-
         <header>
             <h1>recall <span>space</span></h1>
         </header>
-
         <div class="detail" id="detail">
             <div class="loading">loading...</div>
         </div>
-
     </div>
 
     <script>
         const memoryId = {{ memory_id }};
-        const API = '';
+        let collections = [];
 
-        document.addEventListener('DOMContentLoaded', loadDetail);
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCollections();
+            await loadDetail();
+        });
+
+        async function api(path, opts = {}) {
+            const key = localStorage.getItem('recall_api_key');
+            if (key) opts.headers = { ...opts.headers, 'X-API-Key': key };
+            return fetch(path, opts);
+        }
+
+        async function loadCollections() {
+            try {
+                const res = await api('/api/collections');
+                const data = await res.json();
+                collections = data.collections || [];
+            } catch {}
+        }
 
         async function loadDetail() {
             try {
-                const res = await fetch(`${API}/api/memories/${memoryId}`);
-                if (!res.ok) throw new Error('Not found');
-                const m = await res.json();
-                renderDetail(m);
-            } catch (err) {
+                const res = await api(`/api/memories/${memoryId}`);
+                if (!res.ok) throw new Error();
+                renderDetail(await res.json());
+            } catch {
                 document.getElementById('detail').innerHTML = `
                     <a href="/" class="back">← back</a>
                     <div class="empty-state"><p>memory not found</p></div>`;
@@ -147,101 +91,79 @@
 
             let sections = '';
 
-            // Image
             if (m.type === 'screenshot' && m.file_path) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">screenshot</div>
                     <img class="detail-image" src="/uploads/${esc(m.file_path)}" alt="">
                 </div>`;
             }
 
-            // Audio
             if (m.type === 'voice' && m.file_path) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">audio</div>
                     <audio class="detail-audio" controls src="/uploads/${esc(m.file_path)}"></audio>
                 </div>`;
             }
 
-            // URL
             if (m.url) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">url</div>
-                    <a class="url-link" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.url)}</a>
+                    <a class="url-link" href="${esc(m.url)}" target="_blank">${esc(m.url)}</a>
                 </div>`;
             }
 
-            // User note
             if (m.user_note) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">your note</div>
                     <div class="section-content">${esc(m.user_note)}</div>
                 </div>`;
             }
 
-            // Raw text
             if (m.raw_text) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">captured text</div>
-                    <div class="section-content mono">${esc(m.raw_text)}</div>
+                    <div class="section-content mono">${esc(m.raw_text).substring(0, 5000)}</div>
                 </div>`;
             }
 
-            // OCR text
             if (m.ocr_text) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">extracted text (ocr)</div>
                     <div class="section-content mono">${esc(m.ocr_text)}</div>
                 </div>`;
             }
 
-            // Transcript
             if (m.transcript) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">transcript</div>
                     <div class="section-content">${esc(m.transcript)}</div>
                 </div>`;
             }
 
-            // AI Summary
             if (m.ai_summary) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">ai summary</div>
                     <div class="section-content">${esc(m.ai_summary)}</div>
                 </div>`;
             }
 
-            // AI Actions
             if (m.ai_actions) {
                 try {
                     const actions = JSON.parse(m.ai_actions);
                     if (actions.length) {
-                        sections += `
-                        <div class="detail-section">
+                        sections += `<div class="detail-section">
                             <div class="section-label">action items</div>
-                            <ul class="actions-list">
-                                ${actions.map(a => `<li>${esc(a)}</li>`).join('')}
-                            </ul>
+                            <ul class="actions-list">${actions.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
                         </div>`;
                     }
                 } catch {}
             }
 
-            // AI Tags
             if (m.ai_tags) {
                 try {
                     const tags = JSON.parse(m.ai_tags);
                     if (tags.length) {
-                        sections += `
-                        <div class="detail-section">
+                        sections += `<div class="detail-section">
                             <div class="section-label">tags</div>
                             <div>${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
                         </div>`;
@@ -249,16 +171,29 @@
                 } catch {}
             }
 
-            // Reminders
             if (m.reminders?.length) {
-                sections += `
-                <div class="detail-section">
+                sections += `<div class="detail-section">
                     <div class="section-label">reminders</div>
                     <ul class="actions-list">
-                        ${m.reminders.map(r => `<li>${esc(r.title)} — ${new Date(r.remind_at + 'Z').toLocaleString('da-DK')} ${r.sent ? '✓' : ''}</li>`).join('')}
+                        ${m.reminders.map(r => `<li>${esc(r.title)} — ${new Date(r.remind_at + 'Z').toLocaleString('da-DK')} ${r.sent ? '✓' : '⏳'}</li>`).join('')}
                     </ul>
                 </div>`;
             }
+
+            // Collection selector
+            const collOptions = collections.map(c =>
+                `<option value="${c.id}" ${m.collection_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`
+            ).join('');
+
+            sections += `<div class="detail-section">
+                <div class="section-label">collection</div>
+                <div class="collection-select">
+                    <select onchange="updateCollection(${m.id}, this.value)">
+                        <option value="" ${!m.collection_id ? 'selected' : ''}>none</option>
+                        ${collOptions}
+                    </select>
+                </div>
+            </div>`;
 
             el.innerHTML = `
                 <div class="detail-header">
@@ -276,19 +211,27 @@
                 </div>`;
         }
 
+        async function updateCollection(memId, collId) {
+            try {
+                await api(`/api/memories/${memId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection_id: collId ? parseInt(collId) : null }),
+                });
+            } catch (err) { console.error('Update failed:', err); }
+        }
+
         async function deleteMemory(id) {
             if (!confirm('Delete this memory permanently?')) return;
             try {
-                await fetch(`${API}/api/memories/${id}`, { method: 'DELETE' });
+                await api(`/api/memories/${id}`, { method: 'DELETE' });
                 window.location.href = '/';
-            } catch (err) {
-                console.error('Delete failed:', err);
-            }
+            } catch {}
         }
 
-        function esc(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        function esc(s) {
+            if (!s) return '';
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
     </script>
 </body>

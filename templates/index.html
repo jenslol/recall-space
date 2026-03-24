@@ -16,7 +16,6 @@
 <body>
     <div class="shell">
 
-        <!-- Header -->
         <header>
             <h1>recall <span>space</span></h1>
             <div class="stats" id="stats">
@@ -26,7 +25,6 @@
             </div>
         </header>
 
-        <!-- Capture bar -->
         <div class="capture-bar">
             <div class="capture-actions">
                 <button class="btn btn--primary" id="btn-screenshot">+ file</button>
@@ -36,21 +34,31 @@
             </div>
         </div>
 
-        <!-- Search -->
         <div class="search-bar">
             <input type="text" id="search-input" placeholder="search memories..." autocomplete="off" spellcheck="false">
+            <div class="search-count" id="search-count"></div>
         </div>
 
-        <!-- Filter tabs -->
-        <div class="filter-tabs">
-            <button class="filter-tab active" data-type="all">all</button>
-            <button class="filter-tab" data-type="screenshot">screenshots</button>
-            <button class="filter-tab" data-type="voice">voice</button>
-            <button class="filter-tab" data-type="text">text</button>
-            <button class="filter-tab" data-type="url">urls</button>
+        <div class="nav-row">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-type="all">all</button>
+                <button class="filter-tab" data-type="screenshot">screenshots</button>
+                <button class="filter-tab" data-type="voice">voice</button>
+                <button class="filter-tab" data-type="text">text</button>
+                <button class="filter-tab" data-type="url">urls</button>
+                <button class="filter-tab" data-type="file">files</button>
+            </div>
+            <button class="collections-toggle" id="collections-toggle">collections ▾</button>
         </div>
 
-        <!-- Timeline -->
+        <div class="collections-panel" id="collections-panel">
+            <div class="collections-list" id="collections-list"></div>
+            <div class="collection-add">
+                <input type="text" id="new-collection-name" placeholder="new collection...">
+                <button class="btn btn--small btn--primary" id="btn-add-collection">+</button>
+            </div>
+        </div>
+
         <div class="timeline" id="timeline">
             <div class="loading">loading...</div>
         </div>
@@ -62,26 +70,22 @@
         <div class="modal">
             <h2 id="modal-title">// capture</h2>
 
-            <!-- File upload -->
             <div class="form-group" id="file-group" style="display:none">
                 <label>file</label>
                 <div class="drop-zone" id="drop-zone">drop file here or click to browse</div>
-                <input type="file" id="file-input" accept="image/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none">
+                <input type="file" id="file-input" accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.md,.csv,.json" style="display:none">
             </div>
 
-            <!-- URL input -->
             <div class="form-group" id="url-group" style="display:none">
                 <label>url</label>
                 <input type="url" id="capture-url" placeholder="https://...">
             </div>
 
-            <!-- Text input -->
             <div class="form-group" id="text-group" style="display:none">
                 <label>text</label>
                 <textarea id="capture-text" placeholder="paste or type anything..."></textarea>
             </div>
 
-            <!-- Voice recorder -->
             <div class="form-group" id="voice-group" style="display:none">
                 <div class="voice-recorder">
                     <button class="record-btn" id="record-btn"></button>
@@ -89,7 +93,6 @@
                 </div>
             </div>
 
-            <!-- Common fields -->
             <div class="form-group">
                 <label>title (optional)</label>
                 <input type="text" id="capture-title" placeholder="name this memory">
@@ -98,6 +101,13 @@
             <div class="form-group">
                 <label>note — why is this important?</label>
                 <textarea id="capture-note" placeholder="add context for your future self..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>collection (optional)</label>
+                <select id="capture-collection">
+                    <option value="">none</option>
+                </select>
             </div>
 
             <div class="modal-actions">
