@@ -11,6 +11,8 @@ services:
     environment:
       - TZ=Europe/Copenhagen
     restart: unless-stopped
+    networks:
+      - shared-proxy
 
   ntfy:
     image: binwiederhier/ntfy:latest
@@ -23,3 +25,7 @@ services:
     environment:
       - TZ=Europe/Copenhagen
     restart: unless-stopped
+
+networks:
+  shared-proxy:
+    external: true
