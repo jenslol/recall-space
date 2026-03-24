@@ -98,12 +98,15 @@ function renderStats() {
     const el = document.getElementById('stats');
     if (!el) return;
     const brain = el.querySelector('.brain-status')?.outerHTML || '';
+    const reminders = stats.upcoming_reminders
+        ? `<span><span class="num">${stats.upcoming_reminders}</span> reminders</span>`
+        : '';
     el.innerHTML = `
         <span><span class="num">${stats.total_memories || 0}</span> memories</span>
         <span><span class="num">${stats.pending_jobs || 0}</span> pending</span>
+        ${reminders}
         ${brain}
     `;
-    // Re-check brain status since we replaced the element
     checkBrainStatus();
 }
 

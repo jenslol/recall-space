@@ -20,6 +20,7 @@ import httpx
 
 from app.database import init_db, get_db, now_iso
 from app.processor import run_processor
+from app.reminders import run_reminder_checker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,13 +72,18 @@ def ensure_dirs():
 async def lifespan(app: FastAPI):
     ensure_dirs()
     await init_db()
-    # Start processor as background task (same process = no SQLite locking)
     processor_task = asyncio.create_task(run_processor())
-    log.info("Recall Space v0.2.0 ready")
+    reminder_task = asyncio.create_task(run_reminder_checker())
+    log.info("Recall Space v0.2.1 ready")
     yield
     processor_task.cancel()
+    reminder_task.cancel()
     try:
         await processor_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await reminder_task
     except asyncio.CancelledError:
         pass
 
@@ -335,8 +341,36 @@ async def delete_collection(collection_id: int):
 
 
 # ---------------------------------------------------------------------------
-# API: Jobs / Stats / Worker status
+# API: Jobs / Stats / Worker status / Reminders
 # ---------------------------------------------------------------------------
+
+@app.get("/api/reminders", dependencies=[Depends(check_auth)])
+async def list_reminders(
+    upcoming: bool = Query(True),
+    limit: int = Query(20),
+):
+    """List reminders. By default shows upcoming unsent ones."""
+    db = await get_db()
+    try:
+        if upcoming:
+            rows = await db.execute_fetchall(
+                """SELECT r.*, m.title as memory_title
+                   FROM reminders r JOIN memories m ON m.id = r.memory_id
+                   WHERE r.sent = 0
+                   ORDER BY r.remind_at ASC LIMIT ?""",
+                (limit,),
+            )
+        else:
+            rows = await db.execute_fetchall(
+                """SELECT r.*, m.title as memory_title
+                   FROM reminders r JOIN memories m ON m.id = r.memory_id
+                   ORDER BY r.remind_at DESC LIMIT ?""",
+                (limit,),
+            )
+        return {"reminders": [dict(r) for r in rows]}
+    finally:
+        await db.close()
+
 
 @app.get("/api/jobs", dependencies=[Depends(check_auth)])
 async def list_jobs(status: str | None = Query(None), limit: int = Query(20)):
@@ -367,10 +401,14 @@ async def get_stats():
         pending = await db.execute_fetchall(
             "SELECT COUNT(*) as cnt FROM job_queue WHERE status='pending'"
         )
+        upcoming = await db.execute_fetchall(
+            "SELECT COUNT(*) as cnt FROM reminders WHERE sent=0"
+        )
         return {
             "total_memories": total[0]["cnt"],
             "by_type": {r["type"]: r["cnt"] for r in by_type},
             "pending_jobs": pending[0]["cnt"],
+            "upcoming_reminders": upcoming[0]["cnt"],
         }
     finally:
         await db.close()
