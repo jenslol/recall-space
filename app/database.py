@@ -77,6 +77,17 @@ async def init_db():
             attempts INTEGER NOT NULL DEFAULT 0
         );
 
+        CREATE TABLE IF NOT EXISTS action_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_id INTEGER NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+            text TEXT NOT NULL,
+            done INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_actions_done ON action_items(done);
+        CREATE INDEX IF NOT EXISTS idx_actions_memory ON action_items(memory_id);
+
         CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
             title, user_note, raw_text, ocr_text, transcript, ai_summary, ai_actions,
             content=memories, content_rowid=id, tokenize='unicode61'

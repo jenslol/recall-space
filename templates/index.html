@@ -25,12 +25,26 @@
             </div>
         </header>
 
-        <div class="capture-bar">
-            <div class="capture-actions">
-                <button class="btn btn--primary" id="btn-screenshot">+ file</button>
-                <button class="btn" id="btn-text">+ text</button>
-                <button class="btn" id="btn-url">+ url</button>
-                <button class="btn" id="btn-voice">+ voice</button>
+        <!-- Quick capture bar -->
+        <div class="quick-capture">
+            <input type="text" id="quick-input" placeholder="capture a thought..." autocomplete="off" spellcheck="false">
+            <div class="quick-actions">
+                <button class="btn btn--small" id="btn-screenshot" title="file">+file</button>
+                <button class="btn btn--small" id="btn-url" title="url">+url</button>
+                <button class="btn btn--small" id="btn-voice" title="voice">+voice</button>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard" id="dashboard">
+            <div class="dashboard-toggle" id="dashboard-toggle">
+                <span>inbox</span>
+                <span class="dashboard-count" id="dashboard-count"></span>
+            </div>
+            <div class="dashboard-content" id="dashboard-content">
+                <div class="dashboard-section" id="dash-reminders"></div>
+                <div class="dashboard-section" id="dash-actions"></div>
+                <div class="dashboard-section" id="dash-processing"></div>
             </div>
         </div>
 

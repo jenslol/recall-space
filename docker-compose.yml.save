@@ -12,6 +12,7 @@ services:
       - TZ=Europe/Copenhagen
     restart: unless-stopped
 
+
   ntfy:
     image: binwiederhier/ntfy:latest
     container_name: recall-ntfy

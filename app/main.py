@@ -341,6 +341,92 @@ async def delete_collection(collection_id: int):
 
 
 # ---------------------------------------------------------------------------
+# API: Dashboard / Action Items
+# ---------------------------------------------------------------------------
+
+@app.get("/api/dashboard", dependencies=[Depends(check_auth)])
+async def get_dashboard():
+    """Combined dashboard data: upcoming reminders, open action items, processing count."""
+    db = await get_db()
+    try:
+        # Upcoming reminders (next 7 days, unsent)
+        reminders = await db.execute_fetchall(
+            """SELECT r.id, r.remind_at, r.title, r.memory_id, m.title as memory_title
+               FROM reminders r JOIN memories m ON m.id = r.memory_id
+               WHERE r.sent = 0
+               ORDER BY r.remind_at ASC LIMIT 10"""
+        )
+
+        # Open action items (not done, most recent first)
+        actions = await db.execute_fetchall(
+            """SELECT a.id, a.text, a.done, a.memory_id, a.created_at, m.title as memory_title
+               FROM action_items a JOIN memories m ON m.id = a.memory_id
+               WHERE a.done = 0
+               ORDER BY a.created_at DESC LIMIT 20"""
+        )
+
+        # Processing count
+        processing = await db.execute_fetchall(
+            "SELECT COUNT(*) as cnt FROM job_queue WHERE status IN ('pending','processing')"
+        )
+
+        # Recently completed (last 3)
+        recent = await db.execute_fetchall(
+            """SELECT id, title, ai_summary, type, created_at FROM memories
+               WHERE processing_status = 'done' AND ai_summary IS NOT NULL
+               ORDER BY updated_at DESC LIMIT 3"""
+        )
+
+        return {
+            "reminders": [dict(r) for r in reminders],
+            "actions": [dict(a) for a in actions],
+            "processing_count": processing[0]["cnt"],
+            "recent_completed": [dict(r) for r in recent],
+        }
+    finally:
+        await db.close()
+
+
+@app.get("/api/actions", dependencies=[Depends(check_auth)])
+async def list_actions(done: bool = Query(False), limit: int = Query(50)):
+    db = await get_db()
+    try:
+        rows = await db.execute_fetchall(
+            """SELECT a.*, m.title as memory_title FROM action_items a
+               JOIN memories m ON m.id = a.memory_id
+               WHERE a.done = ? ORDER BY a.created_at DESC LIMIT ?""",
+            (1 if done else 0, limit),
+        )
+        return {"actions": [dict(r) for r in rows]}
+    finally:
+        await db.close()
+
+
+@app.patch("/api/actions/{action_id}", dependencies=[Depends(check_auth)])
+async def toggle_action(action_id: int, request: Request):
+    body = await request.json()
+    done = 1 if body.get("done") else 0
+    db = await get_db()
+    try:
+        await db.execute("UPDATE action_items SET done=? WHERE id=?", (done, action_id))
+        await db.commit()
+        return {"status": "ok"}
+    finally:
+        await db.close()
+
+
+@app.delete("/api/actions/{action_id}", dependencies=[Depends(check_auth)])
+async def delete_action(action_id: int):
+    db = await get_db()
+    try:
+        await db.execute("DELETE FROM action_items WHERE id=?", (action_id,))
+        await db.commit()
+        return {"status": "ok"}
+    finally:
+        await db.close()
+
+
+# ---------------------------------------------------------------------------
 # API: Jobs / Stats / Worker status / Reminders
 # ---------------------------------------------------------------------------
 

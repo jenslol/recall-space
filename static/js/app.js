@@ -17,12 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMemories();
     loadStats();
     loadCollections();
+    loadDashboard();
     checkBrainStatus();
     setupEventListeners();
     setupVoiceRecorder();
     setInterval(checkBrainStatus, 30000);
     setInterval(loadStats, 15000);
-    setInterval(() => { if (stats.pending_jobs > 0) { loadMemories(); loadStats(); } }, 5000);
+    setInterval(() => {
+        if (stats.pending_jobs > 0) { loadMemories(); loadStats(); loadDashboard(); }
+    }, 5000);
 });
 
 // ---------------------------------------------------------------------------
@@ -283,11 +286,129 @@ async function deleteCollection(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+let dashboardData = {};
+
+async function loadDashboard() {
+    try {
+        const res = await api('/api/dashboard');
+        dashboardData = await res.json();
+        renderDashboard();
+    } catch {}
+}
+
+function renderDashboard() {
+    const d = dashboardData;
+    const totalItems = (d.reminders?.length || 0) + (d.actions?.length || 0);
+    const countEl = document.getElementById('dashboard-count');
+    if (countEl) countEl.textContent = totalItems > 0 ? totalItems : '';
+
+    // Reminders
+    const remEl = document.getElementById('dash-reminders');
+    if (remEl) {
+        if (d.reminders?.length) {
+            remEl.innerHTML = `<div class="dash-label">upcoming reminders</div>`
+                + d.reminders.map(r => {
+                    const time = r.remind_at ? formatReminderTime(r.remind_at) : '';
+                    return `<div class="dash-item">
+                        <a href="/memory/${r.memory_id}">${esc(r.title)}</a>
+                        <span class="dash-time">${time}</span>
+                    </div>`;
+                }).join('');
+        } else {
+            remEl.innerHTML = '';
+        }
+    }
+
+    // Actions
+    const actEl = document.getElementById('dash-actions');
+    if (actEl) {
+        if (d.actions?.length) {
+            actEl.innerHTML = `<div class="dash-label">action items</div>`
+                + d.actions.map(a => `<div class="dash-item ${a.done ? 'done' : ''}">
+                    <input type="checkbox" class="action-check" ${a.done ? 'checked' : ''}
+                        onchange="toggleAction(${a.id}, this.checked)">
+                    <a href="/memory/${a.memory_id}">${esc(a.text)}</a>
+                    ${a.memory_title ? `<span class="dash-source">${esc(a.memory_title)}</span>` : ''}
+                </div>`).join('');
+        } else {
+            actEl.innerHTML = '';
+        }
+    }
+
+    // Processing
+    const procEl = document.getElementById('dash-processing');
+    if (procEl) {
+        if (d.processing_count > 0) {
+            procEl.innerHTML = `<div class="dash-processing">
+                <span class="spin"></span>
+                ${d.processing_count} memor${d.processing_count === 1 ? 'y' : 'ies'} processing...
+            </div>`;
+        } else {
+            procEl.innerHTML = '';
+        }
+    }
+
+    // Auto-open dashboard if there are items
+    if (totalItems > 0 || d.processing_count > 0) {
+        document.getElementById('dashboard')?.classList.add('open');
+    }
+}
+
+function formatReminderTime(isoStr) {
+    try {
+        const d = new Date(isoStr + (isoStr.includes('Z') ? '' : 'Z'));
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+        const reminderDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+        const time = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+        if (reminderDate.getTime() === today.getTime()) return `today ${time}`;
+        if (reminderDate.getTime() === tomorrow.getTime()) return `tomorrow ${time}`;
+        return d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }) + ' ' + time;
+    } catch { return isoStr; }
+}
+
+async function toggleAction(id, done) {
+    try {
+        await api(`/api/actions/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ done }),
+        });
+        loadDashboard();
+    } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Quick capture
+// ---------------------------------------------------------------------------
+async function quickTextCapture(text) {
+    if (!text.trim()) return;
+    const fd = new FormData();
+    fd.append('raw_text', text);
+    try {
+        const res = await api('/api/memories', { method: 'POST', body: fd });
+        if (res.ok) {
+            document.getElementById('quick-input').value = '';
+            loadMemories();
+            loadStats();
+            loadDashboard();
+            // Brief flash feedback
+            const input = document.getElementById('quick-input');
+            input.style.borderColor = 'var(--accent)';
+            setTimeout(() => input.style.borderColor = '', 500);
+        }
+    } catch (err) { console.error('Quick capture error:', err); }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 function setupEventListeners() {
     document.getElementById('btn-screenshot')?.addEventListener('click', () => openModal('screenshot'));
-    document.getElementById('btn-text')?.addEventListener('click', () => openModal('text'));
     document.getElementById('btn-url')?.addEventListener('click', () => openModal('url'));
     document.getElementById('btn-voice')?.addEventListener('click', () => openModal('voice'));
 
@@ -296,6 +417,19 @@ function setupEventListeners() {
     });
     document.getElementById('btn-cancel')?.addEventListener('click', closeModal);
     document.getElementById('btn-save')?.addEventListener('click', submitCapture);
+
+    // Quick capture — Enter to submit
+    document.getElementById('quick-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            quickTextCapture(e.target.value);
+        }
+    });
+
+    // Dashboard toggle
+    document.getElementById('dashboard-toggle')?.addEventListener('click', () => {
+        document.getElementById('dashboard')?.classList.toggle('open');
+    });
 
     // Search
     document.getElementById('search-input')?.addEventListener('input', (e) => {

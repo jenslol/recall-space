@@ -286,6 +286,10 @@ async def process_analyze(db, job: dict):
         if data.get("dates"):
             await create_reminders(db, memory_id, data["dates"])
 
+        # Populate action_items table
+        if data.get("actions"):
+            await create_action_items(db, memory_id, data["actions"])
+
         log.info(f"  Analysis: {len(data.get('actions',[]))} actions, {len(data.get('dates',[]))} dates")
         await mark_job(db, job["id"], "done")
 
@@ -302,7 +306,7 @@ async def process_analyze(db, job: dict):
 
 
 # ---------------------------------------------------------------------------
-# Reminders
+# Reminders & Action Items
 # ---------------------------------------------------------------------------
 
 async def create_reminders(db, memory_id: int, dates: list):
@@ -325,6 +329,18 @@ async def create_reminders(db, memory_id: int, dates: list):
             log.debug(f"  Could not parse date '{date_str}': {e}")
 
     await db.commit()
+
+
+async def create_action_items(db, memory_id: int, actions: list):
+    for action_text in actions:
+        text = action_text.strip()
+        if text:
+            await db.execute(
+                "INSERT INTO action_items (memory_id, text) VALUES (?,?)",
+                (memory_id, text),
+            )
+    await db.commit()
+    log.info(f"  Created {len(actions)} action items")
 
 
 # ---------------------------------------------------------------------------
