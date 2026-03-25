@@ -88,7 +88,7 @@ async def run_reminder_checker():
                     memory_url = f"{base_url}/memory/{r['mid']}" if base_url else ""
 
                     sent = await send_notification(
-                        title=f"🧠 {reminder_title}",
+                        title=f"{reminder_title}",
                         body=body,
                         url=memory_url,
                     )
