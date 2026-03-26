@@ -643,45 +643,51 @@
   }
 
   function buildMemoryCard(mem) {
-    const el = document.createElement('div');
-    el.className = 'memory-card';
-    el.dataset.id = mem.id;
+  const el = document.createElement('div');
+  el.className = 'memory-card';
+  el.dataset.id = mem.id;
 
-    const typeClass = mem.memory_type === 'voice' ? 'card-type-voice' : '';
-    const statusCls = mem.status === 'done' || mem.status === 'complete' ? 'done'
-                    : mem.status === 'processing' ? 'processing' : 'pending';
-    const statusLabel = statusCls === 'done' ? 'READY'
-                      : statusCls === 'processing' ? 'PROCESSING' : 'QUEUED';
+  const type = (mem.type || 'text').toUpperCase();
+  const typeClass = mem.type === 'voice' ? 'card-type-voice' : '';
 
-    const title = escapeHtml(mem.title || 'Untitled');
-    const summary = escapeHtml(mem.summary || mem.content_preview || '');
-    const time = formatTime(mem.created_at);
-    const type = (mem.memory_type || 'text').toUpperCase();
-    const tags = (mem.tags || []).slice(0, 3).map(t =>
-      `<span class="card-tag">${escapeHtml(t)}</span>`
-    ).join('');
+  const statusRaw = mem.processing_status || 'pending';
+  const statusCls = statusRaw === 'done' ? 'done'
+                  : statusRaw === 'processing' ? 'processing' : 'pending';
+  const statusLabel = statusCls === 'done' ? 'READY'
+                    : statusCls === 'processing' ? 'PROCESSING' : 'QUEUED';
 
-    el.innerHTML = `
-      <div class="card-header">
-        <span class="card-type-badge ${typeClass}">${type}</span>
-        <span class="card-time">${time}</span>
-      </div>
-      <div class="card-title">${title}</div>
-      ${summary ? `<div class="card-summary">${summary}</div>` : ''}
-      <div class="card-footer">
-        <div class="card-tags">${tags}</div>
-        <div class="card-status ${statusCls}">
-          <span class="dot"></span>${statusLabel}
-        </div>
-      </div>
-    `;
+  const title = escapeHtml(mem.title || mem.original_filename || mem.url || 'Untitled');
+  const summary = escapeHtml(mem.ai_summary || mem.user_note || mem.raw_text || '');
+  const time = formatTime(mem.created_at);
 
-    el.addEventListener('click', () => {
-      window.location.href = `/memory/${mem.id}`;
-    });
-
-    return el;
+  let tags = [];
+  if (mem.ai_tags) {
+    try { tags = JSON.parse(mem.ai_tags).slice(0, 3); }
+    catch { tags = String(mem.ai_tags).split(',').slice(0, 3); }
   }
+  const tagsHtml = tags.map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('');
+
+  el.innerHTML = `
+    <div class="card-header">
+      <span class="card-type-badge ${typeClass}">${type}</span>
+      <span class="card-time">${time}</span>
+    </div>
+    <div class="card-title">${title}</div>
+    ${summary ? `<div class="card-summary">${summary}</div>` : ''}
+    <div class="card-footer">
+      <div class="card-tags">${tagsHtml}</div>
+      <div class="card-status ${statusCls}">
+        <span class="dot"></span>${statusLabel}
+      </div>
+    </div>
+  `;
+
+  el.addEventListener('click', () => {
+    window.location.href = `/memory/${mem.id}`;
+  });
+
+  return el;
+}
 
   async function loadMoreMemories() {
     await loadTimeline(true);

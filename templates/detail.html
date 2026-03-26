@@ -183,7 +183,7 @@
 
   async function checkBrainStatus() {
     try {
-      const r = await fetch(API_BASE + '/api/brain/status', { headers: { 'X-API-Key': getApiKey() } });
+      const r = await fetch(API_BASE + '/api/worker-status', { headers: { 'X-API-Key': getApiKey() } });
       if (!r.ok) throw new Error();
       const d = await r.json();
       const online = d.online || d.status === 'online';
@@ -250,7 +250,7 @@
       loadCollectionChips(id, mem.collection_ids || []);
 
       // If still processing, poll for updates
-      if (mem.status === 'processing' || mem.status === 'pending') {
+      if (mem.processing_status === 'processing' || mem.processing_status === 'pending') {
         setTimeout(() => pollProcessing(id), 5000);
       }
 
@@ -266,24 +266,24 @@
 
   function renderMemory(mem) {
     // Meta row
-    const typeCls = mem.memory_type === 'voice' ? 'detail-type-voice' : '';
-    const type = (mem.memory_type || 'text').toUpperCase();
+    const typeCls = mem.type === 'voice' ? 'detail-type-voice' : '';
+    const type = (mem.type || 'text').toUpperCase();
     document.getElementById('detail-meta').innerHTML = `
       <span class="detail-type-badge ${typeCls}">${type}</span>
       <span class="detail-timestamp">${formatDateFull(mem.created_at)}</span>
-      ${mem.source_url ? `<a href="${escapeHtml(mem.source_url)}" target="_blank" rel="noopener"
+      ${mem.url ? `<a href="${escapeHtml(mem.url)}" target="_blank" rel="noopener"
         style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:0.08em;"
         onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1">
         ↗ SOURCE</a>` : ''}
     `;
 
     // Title
-    document.getElementById('detail-title').textContent = mem.title || 'Untitled';
+    document.getElementById('detail-title').textContent = mem.title || mem.original_filename || mem.url || 'Untitled';
 
     // Summary
     const summaryEl = document.getElementById('detail-summary');
-    if (mem.summary) {
-      summaryEl.textContent = mem.summary;
+    if (mem.ai_summary) {
+      summaryEl.textContent = mem.ai_summary;
       summaryEl.style.display = '';
     } else {
       summaryEl.style.display = 'none';
@@ -291,10 +291,10 @@
 
     // Processing notice
     const noticeEl = document.getElementById('processing-notice');
-    if (mem.status === 'processing') {
+    if (mem.processing_status === 'processing') {
       noticeEl.classList.remove('hidden');
       document.getElementById('processing-text').textContent = 'AI processing in progress — check back shortly.';
-    } else if (mem.status === 'pending') {
+    } else if (mem.processing_status === 'pending') {
       noticeEl.classList.remove('hidden');
       document.getElementById('processing-text').textContent = 'Queued for processing — brain may be offline.';
     } else {
@@ -306,7 +306,7 @@
     body.innerHTML = '';
 
     // Voice: audio player + transcript
-    if (mem.memory_type === 'voice') {
+    if (mem.type === 'voice') {
       if (mem.audio_path || mem.file_path) {
         const audioBlock = document.createElement('div');
         audioBlock.className = 'audio-player-block';
@@ -327,7 +327,7 @@
     }
 
     // Image
-    if (mem.memory_type === 'image' || (mem.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(mem.file_path || ''))) {
+    if (mem.type === 'image' || (mem.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(mem.file_path || ''))) {
       const img = document.createElement('img');
       img.className = 'memory-image';
       img.src = `/uploads/${mem.file_path}`;
@@ -336,8 +336,8 @@
     }
 
     // Full text content / OCR
-    const textContent = mem.content || mem.ocr_text || mem.extracted_text;
-    if (textContent && mem.memory_type !== 'voice') {
+    const textContent = mem.user_note || mem.raw_text || mem.ocr_text;
+    if (textContent && mem.type !== 'voice') {
       const block = document.createElement('div');
       block.className = 'content-block';
       block.textContent = textContent;
@@ -347,7 +347,11 @@
     // Tags
     const tagsEl = document.getElementById('detail-tags');
     tagsEl.innerHTML = '';
-    const tags = mem.tags || [];
+    let tags = [];
+    if (mem.ai_tags) {
+      try { tags = JSON.parse(mem.ai_tags); }
+      catch { tags = String(mem.ai_tags).split(','); }
+    }
     if (tags.length) {
       tags.forEach(t => {
         const chip = document.createElement('a');
@@ -364,7 +368,7 @@
       const r = await fetch(API_BASE + `/api/memories/${id}`, { headers: { 'X-API-Key': getApiKey() } });
       if (!r.ok) return;
       const mem = await r.json();
-      if (mem.status === 'done' || mem.status === 'complete') {
+      if (mem.processing_status === 'done') {
         renderMemory(mem);
         showToast('Processing complete.', 'accent');
       } else {
