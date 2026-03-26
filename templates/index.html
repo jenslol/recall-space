@@ -1,136 +1,1128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>recall space</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recall Space</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="shell">
 
-        <header>
-            <h1>recall <span>space</span></h1>
-            <div class="stats" id="stats">
-                <span><span class="num">—</span> memories</span>
-                <span><span class="num">—</span> pending</span>
-                <span class="brain-status" id="brain-status" title="AI worker offline">🧠</span>
-            </div>
-        </header>
+  <!-- ─── TOP NAV ─────────────────────────────────────────────────────────── -->
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <span class="nav-wordmark">RECALL <span>/ space</span></span>
 
-        <!-- Quick capture bar -->
-        <div class="quick-capture">
-            <input type="text" id="quick-input" placeholder="capture a thought..." autocomplete="off" spellcheck="false">
-            <div class="quick-actions">
-                <button class="btn btn--small" id="btn-screenshot" title="file">+file</button>
-                <button class="btn btn--small" id="btn-url" title="url">+url</button>
-                <button class="btn btn--small" id="btn-voice" title="voice">+voice</button>
-            </div>
+      <!-- Desktop links -->
+      <div class="nav-links">
+        <button class="nav-link active" data-view="timeline" onclick="switchView('timeline')">TIMELINE</button>
+        <button class="nav-link" data-view="search" onclick="switchView('search')">SEARCH</button>
+        <button class="nav-link" data-view="collections" onclick="switchView('collections')">COLLECTIONS</button>
+      </div>
+
+      <div class="nav-right">
+        <!-- Brain status -->
+        <div class="brain-status" id="brain-status-nav">
+          <span class="brain-dot" id="brain-dot-nav"></span>
+          <span id="brain-label-nav">BRAIN</span>
         </div>
 
-        <!-- Dashboard -->
-        <div class="dashboard" id="dashboard">
-            <div class="dashboard-toggle" id="dashboard-toggle">
-                <span>inbox</span>
-                <span class="dashboard-count" id="dashboard-count"></span>
-            </div>
-            <div class="dashboard-content" id="dashboard-content">
-                <div class="dashboard-section" id="dash-reminders"></div>
-                <div class="dashboard-section" id="dash-actions"></div>
-                <div class="dashboard-section" id="dash-processing"></div>
-            </div>
-        </div>
+        <!-- Capture (desktop) -->
+        <button class="nav-capture-btn" onclick="openModal()">CAPTURE</button>
 
-        <div class="search-bar">
-            <input type="text" id="search-input" placeholder="search memories..." autocomplete="off" spellcheck="false">
-            <div class="search-count" id="search-count"></div>
-        </div>
-
-        <div class="nav-row">
-            <div class="filter-tabs">
-                <button class="filter-tab active" data-type="all">all</button>
-                <button class="filter-tab" data-type="screenshot">screenshots</button>
-                <button class="filter-tab" data-type="voice">voice</button>
-                <button class="filter-tab" data-type="text">text</button>
-                <button class="filter-tab" data-type="url">urls</button>
-                <button class="filter-tab" data-type="file">files</button>
-            </div>
-            <button class="collections-toggle" id="collections-toggle">collections ▾</button>
-        </div>
-
-        <div class="collections-panel" id="collections-panel">
-            <div class="collections-list" id="collections-list"></div>
-            <div class="collection-add">
-                <input type="text" id="new-collection-name" placeholder="new collection...">
-                <button class="btn btn--small btn--primary" id="btn-add-collection">+</button>
-            </div>
-        </div>
-
-        <div class="timeline" id="timeline">
-            <div class="loading">loading...</div>
-        </div>
-
+        <!-- Theme toggle -->
+        <button class="nav-btn" id="theme-btn" onclick="toggleTheme()">○</button>
+      </div>
     </div>
+  </nav>
 
-    <!-- Capture Modal -->
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal">
-            <h2 id="modal-title">// capture</h2>
-
-            <div class="form-group" id="file-group" style="display:none">
-                <label>file</label>
-                <div class="drop-zone" id="drop-zone">drop file here or click to browse</div>
-                <input type="file" id="file-input" accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.md,.csv,.json" style="display:none">
-            </div>
-
-            <div class="form-group" id="url-group" style="display:none">
-                <label>url</label>
-                <input type="url" id="capture-url" placeholder="https://...">
-            </div>
-
-            <div class="form-group" id="text-group" style="display:none">
-                <label>text</label>
-                <textarea id="capture-text" placeholder="paste or type anything..."></textarea>
-            </div>
-
-            <div class="form-group" id="voice-group" style="display:none">
-                <div class="voice-recorder">
-                    <button class="record-btn" id="record-btn"></button>
-                    <div class="record-time" id="record-time">00:00</div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>title (optional)</label>
-                <input type="text" id="capture-title" placeholder="name this memory">
-            </div>
-
-            <div class="form-group">
-                <label>note — why is this important?</label>
-                <textarea id="capture-note" placeholder="add context for your future self..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>collection (optional)</label>
-                <select id="capture-collection">
-                    <option value="">none</option>
-                </select>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn" id="btn-cancel">cancel</button>
-                <button class="btn btn--primary" id="btn-save">save</button>
-            </div>
-        </div>
+  <!-- ─── STAT BAR ─────────────────────────────────────────────────────────── -->
+  <div class="stat-bar" id="stat-bar">
+    <div class="stat-item"><span id="stat-total" class="stat-val">—</span>&nbsp;memories</div>
+    <div class="stat-item"><span id="stat-today" class="stat-val">—</span>&nbsp;today</div>
+    <div class="stat-item"><span id="stat-pending" class="stat-val">—</span>&nbsp;processing</div>
+    <div class="stat-item" id="stat-brain-item">
+      <span class="brain-dot" id="brain-dot-bar"></span>&nbsp;
+      <span id="brain-label-bar">offline</span>
     </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item" id="stat-inbox-item" style="display:none;">
+      <span id="stat-inbox" class="stat-val text-accent">—</span>&nbsp;reminders
+    </div>
+  </div>
 
-    <script src="/static/js/app.js"></script>
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────────── -->
+  <main class="app-main">
+
+    <!-- ══ TIMELINE VIEW ══════════════════════════════════════════════════ -->
+    <div id="view-timeline">
+
+      <!-- Quick capture bar -->
+      <div class="capture-bar">
+        <input
+          class="capture-bar-input"
+          id="quick-capture-input"
+          type="text"
+          placeholder="Quick note — press Enter to save…"
+          autocomplete="off"
+        >
+        <button class="capture-bar-btn" onclick="openModal('url')" title="Save URL">
+          <span class="capture-bar-icon">⌁</span> URL
+        </button>
+        <button class="capture-bar-btn" onclick="openModal('voice')" title="Voice memo">
+          <span class="capture-bar-icon">◎</span> VOICE
+        </button>
+        <button class="capture-bar-btn" onclick="openModal('file')" title="Upload file">
+          <span class="capture-bar-icon">⇡</span> FILE
+        </button>
+        <button class="capture-bar-btn primary" onclick="submitQuickCapture()" title="Save text">
+          SAVE →
+        </button>
+      </div>
+
+      <!-- Inbox (reminders / actions) -->
+      <div id="inbox-section" class="inbox-panel" style="display:none;">
+        <div class="section-head">
+          <span class="section-head-label">REMINDERS</span>
+          <span class="section-head-line"></span>
+          <button class="section-head-action" onclick="dismissAllReminders()">dismiss all</button>
+        </div>
+        <div class="inbox-grid" id="inbox-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div id="timeline-content">
+        <!-- skeleton on load -->
+        <div id="timeline-skeleton">
+          <div class="day-group">
+            <div class="day-label">
+              <span class="skeleton" style="width:90px;height:10px;"></span>
+              <span class="day-label-line"></span>
+            </div>
+            <div class="memory-grid" style="border-top:0.5px solid var(--border);">
+              <div class="skeleton-card"><div class="skeleton-line" style="width:60%;"></div><div class="skeleton-line" style="width:90%;"></div><div class="skeleton-line" style="width:75%;"></div></div>
+              <div class="skeleton-card"><div class="skeleton-line" style="width:50%;"></div><div class="skeleton-line" style="width:85%;"></div><div class="skeleton-line" style="width:65%;"></div></div>
+              <div class="skeleton-card"><div class="skeleton-line" style="width:70%;"></div><div class="skeleton-line" style="width:80%;"></div><div class="skeleton-line" style="width:55%;"></div></div>
+            </div>
+          </div>
+        </div>
+        <div id="timeline-days">
+          <!-- populated by JS -->
+        </div>
+        <div id="timeline-empty" class="timeline-empty hidden">
+          <div class="timeline-empty-label">NO MEMORIES YET</div>
+          <div class="timeline-empty-sub">Capture something above to get started.</div>
+        </div>
+        <div id="timeline-load-more" class="hidden" style="padding:24px;text-align:center;">
+          <button
+            onclick="loadMoreMemories()"
+            style="font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--text-3);padding:10px 20px;border:0.5px solid var(--border-strong);border-radius:1px;transition:color 0.15s,border-color 0.15s;"
+            onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent-border)'"
+            onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border-strong)'"
+          >LOAD MORE</button>
+        </div>
+      </div>
+
+    </div><!-- /view-timeline -->
+
+    <!-- ══ SEARCH VIEW ════════════════════════════════════════════════════ -->
+    <div id="view-search" class="hidden">
+
+      <div class="search-bar">
+        <span class="search-icon">⌕</span>
+        <input
+          class="search-input"
+          id="search-input"
+          type="search"
+          placeholder="Search memories…"
+          autocomplete="off"
+          oninput="handleSearch(this.value)"
+        >
+        <button class="search-clear hidden" id="search-clear" onclick="clearSearch()">CLEAR</button>
+      </div>
+
+      <div id="search-meta" class="search-meta hidden"></div>
+
+      <div id="search-results">
+        <div id="search-prompt" style="padding:48px 24px;text-align:center;">
+          <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--text-3);margin-bottom:8px;">SEARCH MEMORIES</div>
+          <div style="font-size:13px;color:var(--text-3);line-height:1.6;">Titles, summaries, transcripts, and content.</div>
+        </div>
+        <div id="search-hits" class="hidden">
+          <!-- populated by JS -->
+        </div>
+        <div id="search-empty" class="timeline-empty hidden">
+          <div class="timeline-empty-label">NO RESULTS</div>
+          <div class="timeline-empty-sub">Try a different search term.</div>
+        </div>
+      </div>
+
+    </div><!-- /view-search -->
+
+    <!-- ══ COLLECTIONS VIEW ═══════════════════════════════════════════════ -->
+    <div id="view-collections" class="hidden">
+
+      <div class="section-head" style="padding-top:20px;">
+        <span class="section-head-label">COLLECTIONS</span>
+        <span class="section-head-line"></span>
+      </div>
+
+      <div class="collections-grid" id="collections-grid">
+        <!-- populated by JS -->
+        <div class="new-collection-card" onclick="createCollection()">
+          <span class="new-collection-plus">+</span>
+          <span class="new-collection-label">NEW COLLECTION</span>
+        </div>
+      </div>
+
+      <!-- Selected collection memories -->
+      <div id="collection-memories" class="hidden">
+        <div class="section-head" style="padding-top:20px;">
+          <button onclick="closeCollection()" style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--text-3);display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-3)'">← BACK</button>
+          <span class="section-head-label" id="collection-view-name" style="margin-left:8px;"></span>
+          <span class="section-head-line"></span>
+          <span class="section-head-action" id="collection-view-count"></span>
+        </div>
+        <div id="collection-memory-grid" class="memory-grid" style="border-top:0.5px solid var(--border);">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+    </div><!-- /view-collections -->
+
+  </main>
+
+
+  <!-- ─── BOTTOM NAV (mobile) ──────────────────────────────────────────────── -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" data-view="timeline" onclick="switchView('timeline')" id="bnav-timeline">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      TIMELINE
+    </button>
+    <button class="bottom-nav-item bottom-nav-capture" onclick="openModal()" id="bnav-capture">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      CAPTURE
+    </button>
+    <button class="bottom-nav-item" data-view="search" onclick="switchView('search')" id="bnav-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      SEARCH
+    </button>
+    <button class="bottom-nav-item" data-view="collections" onclick="switchView('collections')" id="bnav-collections">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      LISTS
+    </button>
+  </nav>
+
+
+  <!-- ─── CAPTURE MODAL ───────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span class="modal-title">NEW MEMORY</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+
+      <!-- Type selector -->
+      <div class="type-tabs">
+        <button class="type-tab active" data-type="text" onclick="switchModalType('text')">TEXT</button>
+        <button class="type-tab" data-type="url" onclick="switchModalType('url')">URL</button>
+        <button class="type-tab" data-type="voice" onclick="switchModalType('voice')">VOICE</button>
+        <button class="type-tab" data-type="file" onclick="switchModalType('file')">FILE</button>
+      </div>
+
+      <!-- TEXT form -->
+      <div id="modal-text" class="modal-body">
+        <div class="form-field">
+          <label class="form-label">TITLE (OPTIONAL)</label>
+          <input class="form-input" id="text-title" type="text" placeholder="Leave blank to auto-generate…">
+        </div>
+        <div class="form-field">
+          <label class="form-label">CONTENT</label>
+          <textarea class="form-textarea" id="text-content" placeholder="What do you want to remember?"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">TAGS (COMMA SEPARATED)</label>
+          <input class="form-input" id="text-tags" type="text" placeholder="e.g. idea, work, reference">
+        </div>
+      </div>
+
+      <!-- URL form -->
+      <div id="modal-url" class="modal-body hidden">
+        <div class="form-field">
+          <label class="form-label">URL</label>
+          <input class="form-input" id="url-url" type="url" placeholder="https://…">
+        </div>
+        <div class="form-field">
+          <label class="form-label">TITLE (OPTIONAL)</label>
+          <input class="form-input" id="url-title" type="text" placeholder="Leave blank to auto-generate…">
+        </div>
+        <div class="form-field">
+          <label class="form-label">NOTES</label>
+          <textarea class="form-textarea" id="url-notes" placeholder="Why are you saving this?" style="min-height:72px;"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">TAGS</label>
+          <input class="form-input" id="url-tags" type="text" placeholder="e.g. reference, reading">
+        </div>
+      </div>
+
+      <!-- VOICE form -->
+      <div id="modal-voice" class="modal-body hidden">
+        <div class="voice-recorder" id="voice-recorder">
+          <div class="record-time" id="record-time">0:00</div>
+          <button class="record-btn" id="record-btn" onclick="toggleRecording()">◎</button>
+          <div class="record-label" id="record-label">TAP TO RECORD</div>
+        </div>
+        <div id="voice-preview" class="hidden">
+          <div class="form-field">
+            <label class="form-label">RECORDING</label>
+            <audio id="voice-playback" controls style="width:100%;accent-color:var(--accent);"></audio>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">TITLE (OPTIONAL)</label>
+          <input class="form-input" id="voice-title" type="text" placeholder="Leave blank to auto-generate…">
+        </div>
+        <div class="form-field">
+          <label class="form-label">TAGS</label>
+          <input class="form-input" id="voice-tags" type="text" placeholder="e.g. meeting, idea">
+        </div>
+      </div>
+
+      <!-- FILE form -->
+      <div id="modal-file" class="modal-body hidden">
+        <div
+          class="file-dropzone"
+          id="file-dropzone"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleFileDrop(event)"
+        >
+          <input type="file" id="file-input" style="display:none;" onchange="handleFileSelect(event)">
+          <div id="file-dropzone-label" class="file-dropzone-label">
+            ⇡ &nbsp; DROP FILE OR TAP TO BROWSE
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">TITLE (OPTIONAL)</label>
+          <input class="form-input" id="file-title" type="text" placeholder="Leave blank to auto-generate…">
+        </div>
+        <div class="form-field">
+          <label class="form-label">TAGS</label>
+          <input class="form-input" id="file-tags" type="text" placeholder="e.g. document, scan">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="modal-footer-btn" onclick="closeModal()">CANCEL</button>
+        <button class="modal-footer-btn primary" id="modal-submit-btn" onclick="submitCapture()">SAVE</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ─── TOAST ────────────────────────────────────────────────────────────── -->
+  <div id="toast-container"></div>
+
+
+  <!-- ─── SCRIPTS ─────────────────────────────────────────────────────────── -->
+  <script>
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     CONFIG
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  const API_BASE = '';
+  const PAGE_SIZE = 30;
+
+  function getApiKey() {
+    return localStorage.getItem('recall_api_key') || '';
+  }
+
+  function apiHeaders(extra = {}) {
+    return {
+      'Content-Type': 'application/json',
+      'X-API-Key': getApiKey(),
+      ...extra
+    };
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     THEME
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    const btn = document.getElementById('theme-btn');
+    if (html.dataset.theme === 'dark') {
+      html.dataset.theme = 'light';
+      btn.textContent = '●';
+      localStorage.setItem('theme', 'light');
+    } else {
+      html.dataset.theme = 'dark';
+      btn.textContent = '○';
+      localStorage.setItem('theme', 'dark');
+    }
+  }
+
+  (function initTheme() {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.dataset.theme = theme;
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = theme === 'dark' ? '○' : '●';
+  })();
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     VIEW ROUTING
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function switchView(view) {
+    ['timeline', 'search', 'collections'].forEach(v => {
+      document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+    });
+
+    // Top nav active
+    document.querySelectorAll('.nav-link[data-view]').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+
+    // Bottom nav active
+    document.querySelectorAll('.bottom-nav-item[data-view]').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+
+    if (view === 'search') {
+      setTimeout(() => document.getElementById('search-input').focus(), 100);
+    }
+    if (view === 'collections') {
+      loadCollections();
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TOAST
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function showToast(msg, type = 'default', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'accent' ? ' toast-accent' : type === 'error' ? ' toast-err' : '');
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.3s';
+      setTimeout(() => el.remove(), 300);
+    }, duration);
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BRAIN STATUS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function checkBrainStatus() {
+    try {
+      const r = await fetch(API_BASE + '/api/brain/status', { headers: { 'X-API-Key': getApiKey() } });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      const online = d.online || d.status === 'online';
+      const busy = d.busy;
+
+      const cls = busy ? 'busy' : online ? 'online' : '';
+      const label = busy ? 'PROCESSING' : online ? 'ONLINE' : 'OFFLINE';
+
+      ['nav', 'bar'].forEach(loc => {
+        const dot = document.getElementById('brain-dot-' + loc);
+        const lbl = document.getElementById('brain-label-' + loc);
+        if (dot) { dot.className = 'brain-dot ' + cls; }
+        if (lbl) lbl.textContent = label;
+      });
+    } catch {
+      ['nav', 'bar'].forEach(loc => {
+        const dot = document.getElementById('brain-dot-' + loc);
+        const lbl = document.getElementById('brain-label-' + loc);
+        if (dot) dot.className = 'brain-dot';
+        if (lbl) lbl.textContent = 'OFFLINE';
+      });
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     STATS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function loadStats() {
+    try {
+      const r = await fetch(API_BASE + '/api/memories?limit=1', { headers: { 'X-API-Key': getApiKey() } });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.total !== undefined) document.getElementById('stat-total').textContent = d.total;
+    } catch {}
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const r = await fetch(API_BASE + `/api/memories?date=${today}&limit=1`, { headers: { 'X-API-Key': getApiKey() } });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.total !== undefined) document.getElementById('stat-today').textContent = d.total;
+      }
+    } catch {}
+
+    try {
+      const r = await fetch(API_BASE + '/api/jobs?status=pending', { headers: { 'X-API-Key': getApiKey() } });
+      if (r.ok) {
+        const d = await r.json();
+        const count = Array.isArray(d) ? d.length : (d.count || 0);
+        document.getElementById('stat-pending').textContent = count;
+      }
+    } catch {}
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     INBOX / REMINDERS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function loadInbox() {
+    try {
+      const r = await fetch(API_BASE + '/api/reminders?status=pending', { headers: { 'X-API-Key': getApiKey() } });
+      if (!r.ok) return;
+      const reminders = await r.json();
+      const items = Array.isArray(reminders) ? reminders : (reminders.items || []);
+
+      const section = document.getElementById('inbox-section');
+      const grid = document.getElementById('inbox-grid');
+      const statItem = document.getElementById('stat-inbox-item');
+      const statCount = document.getElementById('stat-inbox');
+
+      if (items.length === 0) {
+        section.style.display = 'none';
+        statItem.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      statItem.style.display = '';
+      statCount.textContent = items.length;
+
+      grid.innerHTML = items.map(item => `
+        <div class="inbox-item type-reminder" data-id="${item.id}">
+          <div class="inbox-item-type">
+            <span class="dot"></span> REMINDER
+          </div>
+          <div class="inbox-item-text">${escapeHtml(item.text || item.reminder_text || '')}</div>
+          <div class="inbox-item-meta">
+            <span>${formatDate(item.due_at || item.created_at)}</span>
+            <button class="inbox-item-dismiss" onclick="dismissReminder(${item.id}, this.closest('.inbox-item'))">dismiss</button>
+          </div>
+        </div>
+      `).join('');
+    } catch {}
+  }
+
+  async function dismissReminder(id, el) {
+    try {
+      await fetch(API_BASE + `/api/reminders/${id}/dismiss`, {
+        method: 'POST',
+        headers: { 'X-API-Key': getApiKey() }
+      });
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.2s';
+      setTimeout(() => {
+        el.remove();
+        const grid = document.getElementById('inbox-grid');
+        if (!grid.children.length) {
+          document.getElementById('inbox-section').style.display = 'none';
+          document.getElementById('stat-inbox-item').style.display = 'none';
+        }
+      }, 200);
+    } catch {
+      showToast('Could not dismiss reminder.', 'error');
+    }
+  }
+
+  async function dismissAllReminders() {
+    const items = document.querySelectorAll('#inbox-grid .inbox-item');
+    for (const item of items) {
+      await dismissReminder(item.dataset.id, item);
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TIMELINE
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  let timelineOffset = 0;
+  let timelineHasMore = false;
+  const timelineDayMap = {}; // date -> DOM element
+
+  async function loadTimeline(append = false) {
+    if (!append) {
+      timelineOffset = 0;
+      timelineDayMap;
+      document.getElementById('timeline-skeleton').style.display = '';
+      document.getElementById('timeline-days').innerHTML = '';
+      document.getElementById('timeline-empty').classList.add('hidden');
+    }
+
+    try {
+      const r = await fetch(
+        API_BASE + `/api/memories?limit=${PAGE_SIZE}&offset=${timelineOffset}`,
+        { headers: { 'X-API-Key': getApiKey() } }
+      );
+      if (!r.ok) throw new Error('API error');
+      const data = await r.json();
+      const memories = Array.isArray(data) ? data : (data.memories || data.items || []);
+      const total = data.total || memories.length;
+
+      document.getElementById('timeline-skeleton').style.display = 'none';
+
+      if (memories.length === 0 && !append) {
+        document.getElementById('timeline-empty').classList.remove('hidden');
+        document.getElementById('timeline-load-more').classList.add('hidden');
+        return;
+      }
+
+      renderMemoriesToTimeline(memories);
+
+      timelineOffset += memories.length;
+      timelineHasMore = timelineOffset < total;
+      document.getElementById('timeline-load-more').classList.toggle('hidden', !timelineHasMore);
+
+    } catch (e) {
+      document.getElementById('timeline-skeleton').style.display = 'none';
+      showToast('Could not load memories.', 'error');
+    }
+  }
+
+  function renderMemoriesToTimeline(memories) {
+    const container = document.getElementById('timeline-days');
+
+    memories.forEach(mem => {
+      const date = (mem.created_at || '').split('T')[0];
+      const dateLabel = formatDayLabel(date);
+
+      let dayEl = document.querySelector(`[data-day="${date}"]`);
+      if (!dayEl) {
+        dayEl = document.createElement('div');
+        dayEl.className = 'day-group';
+        dayEl.dataset.day = date;
+        dayEl.innerHTML = `
+          <div class="day-label">
+            <span class="day-label-text">${dateLabel}</span>
+            <span class="day-label-line"></span>
+            <span class="day-count" id="day-count-${date}">0</span>
+          </div>
+          <div class="memory-grid" id="day-grid-${date}" style="border-top:0.5px solid var(--border);"></div>
+        `;
+        container.appendChild(dayEl);
+      }
+
+      const grid = document.getElementById('day-grid-' + date);
+      if (grid) {
+        grid.appendChild(buildMemoryCard(mem));
+        const countEl = document.getElementById('day-count-' + date);
+        if (countEl) countEl.textContent = grid.children.length;
+      }
+    });
+  }
+
+  function buildMemoryCard(mem) {
+    const el = document.createElement('div');
+    el.className = 'memory-card';
+    el.dataset.id = mem.id;
+
+    const typeClass = mem.memory_type === 'voice' ? 'card-type-voice' : '';
+    const statusCls = mem.status === 'done' || mem.status === 'complete' ? 'done'
+                    : mem.status === 'processing' ? 'processing' : 'pending';
+    const statusLabel = statusCls === 'done' ? 'READY'
+                      : statusCls === 'processing' ? 'PROCESSING' : 'QUEUED';
+
+    const title = escapeHtml(mem.title || 'Untitled');
+    const summary = escapeHtml(mem.summary || mem.content_preview || '');
+    const time = formatTime(mem.created_at);
+    const type = (mem.memory_type || 'text').toUpperCase();
+    const tags = (mem.tags || []).slice(0, 3).map(t =>
+      `<span class="card-tag">${escapeHtml(t)}</span>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="card-header">
+        <span class="card-type-badge ${typeClass}">${type}</span>
+        <span class="card-time">${time}</span>
+      </div>
+      <div class="card-title">${title}</div>
+      ${summary ? `<div class="card-summary">${summary}</div>` : ''}
+      <div class="card-footer">
+        <div class="card-tags">${tags}</div>
+        <div class="card-status ${statusCls}">
+          <span class="dot"></span>${statusLabel}
+        </div>
+      </div>
+    `;
+
+    el.addEventListener('click', () => {
+      window.location.href = `/memory/${mem.id}`;
+    });
+
+    return el;
+  }
+
+  async function loadMoreMemories() {
+    await loadTimeline(true);
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SEARCH
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  let searchDebounce = null;
+
+  function handleSearch(query) {
+    const clearBtn = document.getElementById('search-clear');
+    clearBtn.classList.toggle('hidden', !query);
+
+    clearTimeout(searchDebounce);
+    if (!query.trim()) {
+      document.getElementById('search-prompt').classList.remove('hidden');
+      document.getElementById('search-hits').classList.add('hidden');
+      document.getElementById('search-empty').classList.add('hidden');
+      document.getElementById('search-meta').classList.add('hidden');
+      return;
+    }
+    searchDebounce = setTimeout(() => doSearch(query.trim()), 350);
+  }
+
+  async function doSearch(query) {
+    document.getElementById('search-prompt').classList.add('hidden');
+    document.getElementById('search-hits').classList.add('hidden');
+    document.getElementById('search-empty').classList.add('hidden');
+
+    try {
+      const r = await fetch(
+        API_BASE + `/api/search?q=${encodeURIComponent(query)}&limit=50`,
+        { headers: { 'X-API-Key': getApiKey() } }
+      );
+      if (!r.ok) throw new Error();
+      const data = await r.json();
+      const memories = Array.isArray(data) ? data : (data.memories || data.results || data.items || []);
+
+      const meta = document.getElementById('search-meta');
+      meta.textContent = `${memories.length} result${memories.length !== 1 ? 's' : ''} for "${query}"`;
+      meta.classList.remove('hidden');
+
+      if (memories.length === 0) {
+        document.getElementById('search-empty').classList.remove('hidden');
+        return;
+      }
+
+      const hits = document.getElementById('search-hits');
+      hits.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'memory-grid';
+      grid.style.borderTop = '0.5px solid var(--border)';
+      memories.forEach(mem => grid.appendChild(buildMemoryCard(mem)));
+      hits.appendChild(grid);
+      hits.classList.remove('hidden');
+
+    } catch {
+      showToast('Search failed.', 'error');
+    }
+  }
+
+  function clearSearch() {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    handleSearch('');
+    input.focus();
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COLLECTIONS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function loadCollections() {
+    try {
+      const r = await fetch(API_BASE + '/api/collections', { headers: { 'X-API-Key': getApiKey() } });
+      if (!r.ok) return;
+      const data = await r.json();
+      const collections = Array.isArray(data) ? data : (data.collections || []);
+
+      const grid = document.getElementById('collections-grid');
+      // Keep the "new" card, rebuild the rest
+      grid.innerHTML = '';
+      collections.forEach(col => {
+        const el = document.createElement('div');
+        el.className = 'collection-card';
+        el.innerHTML = `
+          <div class="collection-name">${escapeHtml(col.name)}</div>
+          ${col.description ? `<div style="font-size:13px;color:var(--text-3);line-height:1.55;">${escapeHtml(col.description)}</div>` : ''}
+          <div class="collection-meta">${col.memory_count || 0} memories</div>
+        `;
+        el.addEventListener('click', () => openCollection(col));
+        grid.appendChild(el);
+      });
+
+      const addCard = document.createElement('div');
+      addCard.className = 'new-collection-card';
+      addCard.innerHTML = `<span class="new-collection-plus">+</span><span class="new-collection-label">NEW COLLECTION</span>`;
+      addCard.addEventListener('click', createCollection);
+      grid.appendChild(addCard);
+
+    } catch {}
+  }
+
+  async function openCollection(col) {
+    document.getElementById('collections-grid').style.display = 'none';
+    document.getElementById('collection-view-name').textContent = col.name.toUpperCase();
+    document.getElementById('collection-memories').classList.remove('hidden');
+
+    const grid = document.getElementById('collection-memory-grid');
+    grid.innerHTML = '';
+
+    try {
+      const r = await fetch(
+        API_BASE + `/api/collections/${col.id}/memories`,
+        { headers: { 'X-API-Key': getApiKey() } }
+      );
+      if (!r.ok) return;
+      const data = await r.json();
+      const memories = Array.isArray(data) ? data : (data.memories || []);
+      document.getElementById('collection-view-count').textContent = memories.length + ' memories';
+      memories.forEach(mem => grid.appendChild(buildMemoryCard(mem)));
+    } catch {}
+  }
+
+  function closeCollection() {
+    document.getElementById('collections-grid').style.display = '';
+    document.getElementById('collection-memories').classList.add('hidden');
+  }
+
+  async function createCollection() {
+    const name = prompt('Collection name:');
+    if (!name?.trim()) return;
+    try {
+      const r = await fetch(API_BASE + '/api/collections', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ name: name.trim() })
+      });
+      if (!r.ok) throw new Error();
+      showToast('Collection created.', 'accent');
+      loadCollections();
+    } catch {
+      showToast('Could not create collection.', 'error');
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     CAPTURE MODAL
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  let modalType = 'text';
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let audioBlob = null;
+  let recordTimer = null;
+  let recordSeconds = 0;
+
+  function openModal(type = 'text') {
+    modalType = type;
+    switchModalType(type);
+    document.getElementById('modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+    stopRecording();
+    resetModal();
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  }
+
+  function resetModal() {
+    ['text-title','text-content','text-tags',
+     'url-url','url-title','url-notes','url-tags',
+     'voice-title','voice-tags',
+     'file-title','file-tags'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('voice-preview').classList.add('hidden');
+    document.getElementById('voice-recorder').style.display = '';
+    document.getElementById('record-btn').classList.remove('recording');
+    document.getElementById('record-label').textContent = 'TAP TO RECORD';
+    document.getElementById('record-time').textContent = '0:00';
+    document.getElementById('file-dropzone-label').innerHTML = '⇡ &nbsp; DROP FILE OR TAP TO BROWSE';
+    audioBlob = null;
+    audioChunks = [];
+  }
+
+  function switchModalType(type) {
+    modalType = type;
+    ['text','url','voice','file'].forEach(t => {
+      document.getElementById('modal-' + t).classList.toggle('hidden', t !== type);
+      document.querySelector(`.type-tab[data-type="${t}"]`).classList.toggle('active', t === type);
+    });
+  }
+
+  // Quick capture bar — Enter key
+  document.getElementById('quick-capture-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitQuickCapture();
+  });
+
+  async function submitQuickCapture() {
+    const input = document.getElementById('quick-capture-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    try {
+      const r = await fetch(API_BASE + '/api/memories', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ memory_type: 'text', content, title: '' })
+      });
+      if (!r.ok) throw new Error();
+      input.value = '';
+      showToast('Saved.', 'accent');
+      await loadTimeline();
+      await loadStats();
+    } catch {
+      showToast('Could not save.', 'error');
+    }
+  }
+
+  async function submitCapture() {
+    const btn = document.getElementById('modal-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'SAVING…';
+
+    try {
+      if (modalType === 'text') {
+        const content = document.getElementById('text-content').value.trim();
+        if (!content) { showToast('Content is required.', 'error'); return; }
+        const r = await fetch(API_BASE + '/api/memories', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({
+            memory_type: 'text',
+            title: document.getElementById('text-title').value.trim(),
+            content,
+            tags: parseTags(document.getElementById('text-tags').value)
+          })
+        });
+        if (!r.ok) throw new Error();
+
+      } else if (modalType === 'url') {
+        const url = document.getElementById('url-url').value.trim();
+        if (!url) { showToast('URL is required.', 'error'); return; }
+        const r = await fetch(API_BASE + '/api/memories', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({
+            memory_type: 'url',
+            title: document.getElementById('url-title').value.trim(),
+            content: url,
+            notes: document.getElementById('url-notes').value.trim(),
+            tags: parseTags(document.getElementById('url-tags').value)
+          })
+        });
+        if (!r.ok) throw new Error();
+
+      } else if (modalType === 'voice') {
+        if (!audioBlob) { showToast('Record something first.', 'error'); return; }
+        const form = new FormData();
+        form.append('file', audioBlob, 'recording.webm');
+        form.append('title', document.getElementById('voice-title').value.trim());
+        form.append('tags', document.getElementById('voice-tags').value.trim());
+        const r = await fetch(API_BASE + '/api/memories/upload', {
+          method: 'POST',
+          headers: { 'X-API-Key': getApiKey() },
+          body: form
+        });
+        if (!r.ok) throw new Error();
+
+      } else if (modalType === 'file') {
+        const fileInput = document.getElementById('file-input');
+        if (!fileInput.files.length) { showToast('Select a file first.', 'error'); return; }
+        const form = new FormData();
+        form.append('file', fileInput.files[0]);
+        form.append('title', document.getElementById('file-title').value.trim());
+        form.append('tags', document.getElementById('file-tags').value.trim());
+        const r = await fetch(API_BASE + '/api/memories/upload', {
+          method: 'POST',
+          headers: { 'X-API-Key': getApiKey() },
+          body: form
+        });
+        if (!r.ok) throw new Error();
+      }
+
+      showToast('Saved.', 'accent');
+      closeModal();
+      await loadTimeline();
+      await loadStats();
+
+    } catch {
+      showToast('Save failed.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'SAVE';
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     VOICE RECORDING
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function toggleRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(audioBlob);
+        document.getElementById('voice-playback').src = url;
+        document.getElementById('voice-preview').classList.remove('hidden');
+        document.getElementById('voice-recorder').style.display = 'none';
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      document.getElementById('record-btn').classList.add('recording');
+      document.getElementById('record-label').textContent = 'TAP TO STOP';
+
+      recordSeconds = 0;
+      recordTimer = setInterval(() => {
+        recordSeconds++;
+        const m = Math.floor(recordSeconds / 60);
+        const s = String(recordSeconds % 60).padStart(2, '0');
+        document.getElementById('record-time').textContent = `${m}:${s}`;
+      }, 1000);
+    } catch {
+      showToast('Microphone not available. Use HTTPS.', 'error');
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    clearInterval(recordTimer);
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FILE DROP
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  }
+  function handleDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+  function handleFileDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      document.getElementById('file-input').files = e.dataTransfer.files;
+      document.getElementById('file-dropzone-label').textContent = file.name;
+    }
+  }
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) document.getElementById('file-dropzone-label').textContent = file.name;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     HELPERS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  function parseTags(str) {
+    return str.split(',').map(t => t.trim()).filter(Boolean);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  }
+
+  function formatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function formatDayLabel(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T12:00:00');
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'TODAY';
+    if (d.toDateString() === yesterday.toDateString()) return 'YESTERDAY';
+    return d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' }).toUpperCase();
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     INIT
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  async function init() {
+    await Promise.all([
+      checkBrainStatus(),
+      loadStats(),
+      loadInbox(),
+      loadTimeline()
+    ]);
+    // Poll brain status every 30s
+    setInterval(checkBrainStatus, 30000);
+    // Refresh stats every 60s
+    setInterval(loadStats, 60000);
+  }
+
+  init();
+
+  </script>
 </body>
 </html>
