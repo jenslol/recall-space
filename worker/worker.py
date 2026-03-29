@@ -132,19 +132,20 @@ Given captured content (text, OCR output, transcripts, URLs, notes), extract str
 You MUST respond with valid JSON only, no markdown, no explanation. Use this exact schema:
 
 {
+  "title": "short title, 3-7 words",
   "summary": "2-3 sentence summary of what this content is about",
   "actions": ["action item 1", "action item 2"],
   "dates": ["2025-03-22T14:00:00 - meeting with Gert", "2025-04-01 - deadline for report"],
   "tags": ["tag1", "tag2", "tag3"]
 }
-
 Rules:
+- title: 3-7 word title capturing the core topic. No punctuation.
 - summary: Brief, useful. What is this and why does it matter?
 - actions: Extract any tasks, to-dos, follow-ups, things to remember to do. Empty array if none.
 - dates: Extract any dates, deadlines, appointments, scheduled events. Include the context. Use ISO format where possible. Empty array if none.
 - tags: 3-6 relevant tags for categorization. Lowercase, no hashtags.
 - If the content is trivial or lacks actionable info, still provide a summary and tags.
-- Respond ONLY with the JSON object. No markdown fences, no preamble."""
+- Respond ONLY with the JSON object. No markdown fences, no preamble.
 
 
 @app.post("/analyze")
