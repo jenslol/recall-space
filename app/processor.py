@@ -237,7 +237,7 @@ async def process_analyze(db, job: dict):
 
     # Gather all available text
     text_parts = []
-    for field in ("raw_text", "ocr_text", "transcript"):
+    for field in ("user_note", "raw_text", "ocr_text", "transcript"):
         if mem.get(field):
             text_parts.append(mem[field])
     if mem.get("url"):
