@@ -790,8 +790,8 @@ async function saveVoice(){
   if(!audioBlob)return;
   const btn=document.getElementById('cap-voice-save');btn.disabled=true;btn.textContent='SAVING…';
   try{
-    const form=new FormData();form.append('file',audioBlob,'recording.webm');form.append('tags',document.getElementById('cap-voice-tags').value.trim());
-    const r=await fetch(API_BASE+'/api/memories/upload',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
+    const form=new FormData();form.append('file',new File([audioBlob],'recording.webm',{type:'audio/webm'}));form.append('user_note',document.getElementById('cap-voice-tags').value.trim());
+    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
     if(!r.ok)throw new Error();
     audioBlob=null;audioChunks=[];document.getElementById('voice-preview').classList.add('hidden');document.getElementById('rec-time').textContent='0:00';document.getElementById('cap-voice-tags').value='';
     showToast('Voice memo saved.','accent');closePanel();await loadTimeline();await loadStats();
@@ -806,7 +806,7 @@ async function saveFile(){
   const fi=document.getElementById('file-input');if(!fi.files.length){showToast('Select a file first.','error');return;}
   const form=new FormData();form.append('file',fi.files[0]);form.append('tags',document.getElementById('cap-file-tags').value.trim());
   try{
-    const r=await fetch(API_BASE+'/api/memories/upload',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
+    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
     if(!r.ok)throw new Error();
     document.getElementById('file-label').innerHTML='⇡ &nbsp; DROP FILE OR TAP TO BROWSE';document.getElementById('cap-file-tags').value='';
     showToast('File saved.','accent');closePanel();await loadTimeline();await loadStats();
