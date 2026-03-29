@@ -145,7 +145,7 @@ Rules:
 - dates: Extract any dates, deadlines, appointments, scheduled events. Include the context. Use ISO format where possible. Empty array if none.
 - tags: 3-6 relevant tags for categorization. Lowercase, no hashtags.
 - If the content is trivial or lacks actionable info, still provide a summary and tags.
-- Respond ONLY with the JSON object. No markdown fences, no preamble.
+- Respond ONLY with the JSON object. No markdown fences, no preamble."""
 
 
 @app.post("/analyze")
