@@ -270,6 +270,8 @@ async def process_analyze(db, job: dict):
 
         data = resp.json()
         updates = {}
+        if data.get("title"):
+            updates["title"] = data["title"]
         if data.get("summary"):
             updates["ai_summary"] = data["summary"]
         if data.get("actions"):
