@@ -740,10 +740,13 @@ document.getElementById('cap-text-content').addEventListener('keydown',e=>{
 document.getElementById('cap-text-tags').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveText();}});
 async function saveText(){
   const content=document.getElementById('cap-text-content').value.trim();if(!content)return;
-  const tags=parseTags(document.getElementById('cap-text-tags').value);
+  const tags=document.getElementById('cap-text-tags').value.trim();
   const btn=document.getElementById('cap-text-save');btn.disabled=true;btn.textContent='SAVING…';
   try{
-    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:hdr(),body:JSON.stringify({memory_type:'text',content,tags})});
+    const form=new FormData();
+    form.append('user_note',content);
+    if(tags)form.append('raw_text',tags); /* tags handled server-side via ai_tags after analysis */
+    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
     if(!r.ok)throw new Error();
     document.getElementById('cap-text-content').value='';document.getElementById('cap-text-tags').value='';
     showToast('Saved.','accent');closePanel();await loadTimeline();await loadStats();
@@ -753,9 +756,11 @@ async function saveText(){
 async function saveUrl(){
   const url=document.getElementById('cap-url-url').value.trim();if(!url){showToast('URL required.','error');return;}
   const note=document.getElementById('cap-url-note').value.trim();
-  const tags=parseTags(document.getElementById('cap-url-tags').value);
   try{
-    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:hdr(),body:JSON.stringify({memory_type:'url',content:url,user_note:note,tags})});
+    const form=new FormData();
+    form.append('url',url);
+    if(note)form.append('user_note',note);
+    const r=await fetch(API_BASE+'/api/memories',{method:'POST',headers:{'X-API-Key':getKey()},body:form});
     if(!r.ok)throw new Error();
     ['cap-url-url','cap-url-note','cap-url-tags'].forEach(id=>document.getElementById(id).value='');
     showToast('Saved.','accent');closePanel();await loadTimeline();await loadStats();
